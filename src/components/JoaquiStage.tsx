@@ -5,6 +5,7 @@ import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
 import { asset, type MediaItem } from '../data/panoramas'
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
+import { RingLoader } from './RingField'
 
 /** A marker drawn on a stage: the player's reticle or Joaqui's real spot. */
 export interface StageMarker {
@@ -45,9 +46,11 @@ export function SphereStage({
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
   const [ready, setReady] = useState(0)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     if (!ref.current) return
+    setLoaded(false)
     const viewer = new Viewer({
       container: ref.current,
       panorama: asset(item.src),
@@ -59,9 +62,14 @@ export function SphereStage({
     viewer.addEventListener('click', ({ data }) => {
       if (!data.rightclick) onPickRef.current?.({ yaw: data.yaw, pitch: data.pitch })
     })
-    viewer.addEventListener('ready', () => setReady((r) => r + 1), {
-      once: true,
-    })
+    viewer.addEventListener(
+      'ready',
+      () => {
+        setReady((r) => r + 1)
+        setLoaded(true)
+      },
+      { once: true },
+    )
     viewerRef.current = viewer
     return () => {
       viewer.destroy()
@@ -99,7 +107,12 @@ export function SphereStage({
     viewer.animate({ yaw: focus.yaw, pitch: focus.pitch, speed: '4rpm' })
   }, [focus, ready])
 
-  return <div ref={ref} className="h-full w-full" />
+  return (
+    <div className="relative h-full w-full">
+      <div ref={ref} className="h-full w-full" />
+      {!loaded && <RingLoader />}
+    </div>
+  )
 }
 
 interface PhotoStageProps {
@@ -110,13 +123,17 @@ interface PhotoStageProps {
 
 /** Flat photo that reports normalized click coords and renders AR markers. */
 export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
+  const [loaded, setLoaded] = useState(false)
+  useEffect(() => setLoaded(false), [item])
   return (
-    <div className="grid h-full w-full place-items-center overflow-hidden p-2">
+    <div className="relative grid h-full w-full place-items-center overflow-hidden p-2">
+      {!loaded && <RingLoader />}
       <div className="relative max-h-full max-w-full">
         <img
           src={asset(item.src)}
           alt={item.place}
           draggable={false}
+          onLoad={() => setLoaded(true)}
           className={`block max-h-[86vh] max-w-full select-none ${
             onPick ? 'cursor-crosshair' : ''
           }`}

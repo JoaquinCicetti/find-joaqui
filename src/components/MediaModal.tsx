@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Viewer } from '@photo-sphere-viewer/core'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
@@ -6,6 +6,7 @@ import '@photo-sphere-viewer/core/index.css'
 import { asset, formatCoords, type MediaItem } from '../data/panoramas'
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconClose } from './icons'
+import { RingLoader } from './RingField'
 
 interface MediaModalProps {
   item: MediaItem
@@ -14,9 +15,11 @@ interface MediaModalProps {
 
 function SphereViewer({ item }: { item: MediaItem }) {
   const ref = useRef<HTMLDivElement>(null)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
     if (!ref.current) return
+    setLoaded(false)
     const viewer = new Viewer({
       container: ref.current,
       panorama: asset(item.src),
@@ -26,10 +29,16 @@ function SphereViewer({ item }: { item: MediaItem }) {
       touchmoveTwoFingers: false,
       defaultZoomLvl: 30,
     })
+    viewer.addEventListener('ready', () => setLoaded(true), { once: true })
     return () => viewer.destroy()
   }, [item])
 
-  return <div ref={ref} className="h-full w-full overflow-hidden rounded-2xl" />
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-2xl">
+      <div ref={ref} className="h-full w-full" />
+      {!loaded && <RingLoader />}
+    </div>
+  )
 }
 
 export function MediaModal({ item, onClose }: MediaModalProps) {
