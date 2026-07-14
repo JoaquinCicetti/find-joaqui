@@ -252,6 +252,10 @@ body {
   background: rgba(10, 13, 18, 0.6);
   backdrop-filter: blur(8px);
 }
+/* our RingLoader replaces PSV's progress spinner */
+.psv-container .psv-loader-container {
+  display: none !important;
+}
 
 /* ---- Perpetual zoom rings: organic shapes drifting out from the center.
    Linear timing + evenly staggered negative delays (one ring per tenth of
@@ -293,6 +297,33 @@ body {
     opacity: 0;
   }
 }
+/* loader variant: same motion, but saturated, fast and small — reads as
+   "the site is breathing the image in", not a spinner */
+.ring-loader {
+  background: rgba(14, 17, 22, 0.88);
+}
+.ring-loader .zoom-ring {
+  --ring-duration: 3.2s;
+  width: 42vmin;
+  border-width: 2px;
+}
+.ring-loader .zoom-ring-0 {
+  --ring-color: #2e63e7;
+  --ring-alpha: 0.75;
+}
+.ring-loader .zoom-ring-1 {
+  --ring-color: #2fd4c4;
+  --ring-alpha: 0.6;
+}
+.ring-loader .zoom-ring-2 {
+  --ring-color: #7fa3f5;
+  --ring-alpha: 0.65;
+}
+.ring-loader .zoom-ring-3 {
+  --ring-color: #8a6cf5;
+  --ring-alpha: 0.55;
+}
+
 /* four alternating shapes/colors — cool palette around the brand blue */
 .zoom-ring-0 {
   --ring-color: var(--color-accent);
@@ -451,6 +482,18 @@ html.vt .anim-scale {
   /* a frozen mid-zoom ring would look broken — hide the layer entirely */
   .ring-stage {
     display: none;
+  }
+  /* …except the loader, which must still signal "loading": one calm ring */
+  .ring-loader {
+    display: grid;
+  }
+  .ring-loader .zoom-ring {
+    animation: none;
+    opacity: 0;
+  }
+  .ring-loader .zoom-ring-0 {
+    opacity: 0.4;
+    transform: scale(1);
   }
   .ar-reticle::before {
     animation: none;
