@@ -248,9 +248,22 @@ body {
 }
 
 /* ---- Photo Sphere Viewer chrome ---- */
-.psv-navbar {
+/* Safe-area insets so the buttons clear curved corners / the home indicator.
+   PSV sizes the bar content-box (40px row) anchored at bottom:-40px when
+   hidden, so the padding must join the hidden offset or a sliver stays
+   visible. width:auto + right:0 keeps the padded box inside the viewer. */
+.psv-container .psv-navbar {
   background: rgba(10, 13, 18, 0.6);
   backdrop-filter: blur(8px);
+  width: auto;
+  right: 0;
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  padding-bottom: env(safe-area-inset-bottom);
+  bottom: calc(-40px - env(safe-area-inset-bottom));
+}
+.psv-container .psv-navbar--open {
+  bottom: 0;
 }
 /* our RingLoader replaces PSV's progress spinner */
 .psv-container .psv-loader-container {
