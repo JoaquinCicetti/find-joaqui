@@ -5,10 +5,10 @@
   --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
 
-  /* Brand — deep blue by default; change these four to re-skin the site */
-  --color-accent: #2e63e7;
-  --color-accent-deep: #1d47b8;
-  --color-accent-soft: #7fa3f5;
+  /* Brand — dusty desaturated blue; change these to re-skin the site */
+  --color-accent: #4d6cae;
+  --color-accent-deep: #3d5691;
+  --color-accent-soft: #9db1d9;
 
   --color-paper: #0e1116; /* page background */
   --color-ink: #e7e9ee;
@@ -67,11 +67,18 @@ body {
       transform 150ms ease;
   }
   .btn-primary {
-    background: var(--color-accent);
-    color: #fff;
+    background: color-mix(in srgb, var(--color-accent) 78%, transparent);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #f2f5fc;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.14),
+      0 6px 22px color-mix(in srgb, var(--color-accent) 26%, transparent);
   }
   .btn-primary:hover {
-    background: var(--color-accent-deep);
+    background: var(--color-accent);
+    border-color: rgba(255, 255, 255, 0.24);
     transform: translateY(-1px);
   }
   .btn-primary:disabled {
@@ -108,7 +115,7 @@ body {
   background-color: var(--color-accent-deep);
   border: 1.5px solid rgba(255, 255, 255, 0.75);
   box-shadow:
-    0 0 0 2px rgba(46, 99, 231, 0.35),
+    0 0 0 2px color-mix(in srgb, var(--color-accent) 35%, transparent),
     0 2px 10px rgba(0, 0, 0, 0.65);
   cursor: pointer;
   transition:
@@ -128,7 +135,7 @@ body {
   border-color: rgba(255, 255, 255, 0.95);
   box-shadow:
     0 0 0 2.5px var(--color-accent),
-    0 0 26px rgba(46, 99, 231, 0.55),
+    0 0 26px color-mix(in srgb, var(--color-accent) 55%, transparent),
     0 8px 24px rgba(0, 0, 0, 0.7);
   z-index: 6 !important;
 }
@@ -329,10 +336,10 @@ body {
   position: absolute;
   inset: 14px;
   border-radius: 9999px;
-  border: 1.5px solid var(--color-accent);
+  border: 1.5px solid var(--color-accent-soft);
   box-shadow:
-    0 0 12px rgba(46, 99, 231, 0.5),
-    inset 0 0 8px rgba(46, 99, 231, 0.3);
+    0 0 12px color-mix(in srgb, var(--color-accent) 50%, transparent),
+    inset 0 0 8px color-mix(in srgb, var(--color-accent) 30%, transparent);
 }
 .ar-reticle::after {
   /* center dot */
@@ -357,18 +364,17 @@ body {
     opacity: 0;
   }
 }
+/* the reveal is a translucent spotlight ring — it frames the hiding spot
+   without ever covering it */
 .ar-truth {
-  display: grid;
-  place-items: center;
-  width: 56px;
-  height: 56px;
+  width: 96px;
+  height: 96px;
   border-radius: 9999px;
-  font-size: 26px;
-  background: rgba(16, 20, 28, 0.7);
-  border: 2px solid var(--color-accent-soft);
+  border: 1.5px solid color-mix(in srgb, var(--color-accent-soft) 90%, transparent);
   box-shadow:
-    0 0 0 3px rgba(46, 99, 231, 0.35),
-    0 0 28px rgba(127, 163, 245, 0.55);
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 34px color-mix(in srgb, var(--color-accent-soft) 40%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--color-accent-soft) 22%, transparent);
   animation: ar-pop 380ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both;
   pointer-events: none;
 }

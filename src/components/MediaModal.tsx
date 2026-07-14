@@ -5,6 +5,7 @@ import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import { asset, formatCoords, type MediaItem } from '../data/panoramas'
 import { countryName, formatDate, useLang } from '../i18n'
+import { IconClose } from './icons'
 
 interface MediaModalProps {
   item: MediaItem
@@ -64,7 +65,7 @@ export function MediaModal({ item, onClose }: MediaModalProps) {
           aria-label={t.closeViewer}
           className="glass-chip absolute top-[max(1rem,env(safe-area-inset-top))] right-4 z-10 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink sm:-top-3 sm:-right-3"
         >
-          ✕
+          <IconClose className="h-4 w-4" />
         </button>
         {item.kind === '360' ? (
           <div className="min-h-0 flex-1 sm:h-[min(76vh,46rem)] sm:flex-none">

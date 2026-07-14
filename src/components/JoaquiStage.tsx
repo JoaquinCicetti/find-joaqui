@@ -15,7 +15,12 @@ export interface StageMarker {
 
 const MARKER_HTML: Record<StageMarker['kind'], string> = {
   reticle: '<div class="ar-reticle"><i></i></div>',
-  truth: '<div class="ar-truth">🙋</div>',
+  truth: '<div class="ar-truth"></div>',
+}
+
+const MARKER_SIZE: Record<StageMarker['kind'], number> = {
+  reticle: 64,
+  truth: 96,
 }
 
 interface SphereStageProps {
@@ -78,7 +83,7 @@ export function SphereStage({
               id: m.id,
               position: { yaw: loc.yaw, pitch: loc.pitch },
               html: MARKER_HTML[m.kind],
-              size: { width: 64, height: 64 },
+              size: { width: MARKER_SIZE[m.kind], height: MARKER_SIZE[m.kind] },
               anchor: 'center center',
             }
           }),
@@ -139,7 +144,7 @@ export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
                     <i />
                   </div>
                 ) : (
-                  <div className="ar-truth">🙋</div>
+                  <div className="ar-truth" />
                 )}
               </div>
             )
