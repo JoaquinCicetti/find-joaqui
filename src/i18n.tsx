@@ -36,6 +36,7 @@ interface GameDict {
   board: string
   again: string
   close: string
+  gyro: string
 }
 
 interface Dict {
@@ -100,6 +101,7 @@ const dictionaries: Record<Lang, Dict> = {
       board: 'Ranking',
       again: 'Jugar de nuevo',
       close: 'Cerrar',
+      gyro: 'Mirar moviendo el celular',
     },
   },
   en: {
@@ -146,6 +148,7 @@ const dictionaries: Record<Lang, Dict> = {
       board: 'Leaderboard',
       again: 'Play again',
       close: 'Close',
+      gyro: 'Look around by moving your phone',
     },
   },
 }

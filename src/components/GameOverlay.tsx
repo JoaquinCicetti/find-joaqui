@@ -98,6 +98,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
               markers={markers}
               onPick={phase === 'guess' ? setGuess : undefined}
               navbar={false}
+              gyro
               focus={
                 phase === 'reveal' && isSphereLoc(locs[item.id])
                   ? (locs[item.id] as { yaw: number; pitch: number })

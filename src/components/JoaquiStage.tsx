@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Viewer } from '@photo-sphere-viewer/core'
 import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin'
+import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
 import { asset, type MediaItem } from '../data/panoramas'
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
+import { useLang } from '../i18n'
+import { IconCompass } from './icons'
 import { RingLoader } from './RingField'
 
 /** A marker drawn on a stage: the player's reticle or Joaqui's real spot. */
@@ -29,6 +32,8 @@ interface SphereStageProps {
   markers: StageMarker[]
   onPick?: (loc: JoaquiLocation) => void
   navbar?: boolean
+  /** show a device-orientation ("look by moving the phone") toggle */
+  gyro?: boolean
   /** when set, the camera glides to this view (e.g. the reveal) */
   focus?: { yaw: number; pitch: number } | null
 }
@@ -39,23 +44,31 @@ export function SphereStage({
   markers,
   onPick,
   navbar = true,
+  gyro = false,
   focus = null,
 }: SphereStageProps) {
+  const { t } = useLang()
   const ref = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
   const [ready, setReady] = useState(0)
   const [loaded, setLoaded] = useState(false)
+  const [gyroAvail, setGyroAvail] = useState(false)
+  const [gyroOn, setGyroOn] = useState(false)
 
   useEffect(() => {
     if (!ref.current) return
     setLoaded(false)
+    setGyroAvail(false)
+    setGyroOn(false)
     const viewer = new Viewer({
       container: ref.current,
       panorama: asset(item.src),
       navbar: navbar ? ['zoom', 'move', 'fullscreen'] : false,
-      plugins: [MarkersPlugin],
+      plugins: gyro
+        ? [MarkersPlugin, [GyroscopePlugin, { touchmove: true }]]
+        : [MarkersPlugin],
       touchmoveTwoFingers: false,
       defaultZoomLvl: 30,
     })
@@ -70,12 +83,27 @@ export function SphereStage({
       },
       { once: true },
     )
+    if (gyro) {
+      const plugin = viewer.getPlugin<GyroscopePlugin>(GyroscopePlugin)
+      plugin?.isSupported().then(setGyroAvail).catch(() => {})
+      plugin?.addEventListener('gyroscope-updated', (e) =>
+        setGyroOn(e.gyroscopeEnabled),
+      )
+    }
     viewerRef.current = viewer
     return () => {
       viewer.destroy()
       viewerRef.current = null
     }
-  }, [item, navbar])
+  }, [item, navbar, gyro])
+
+  const toggleGyro = () => {
+    const plugin = viewerRef.current?.getPlugin<GyroscopePlugin>(GyroscopePlugin)
+    if (!plugin) return
+    // start() asks for motion permission on iOS; if refused, stay off
+    if (plugin.isEnabled()) plugin.stop()
+    else plugin.start().catch(() => setGyroOn(false))
+  }
 
   useEffect(() => {
     const viewer = viewerRef.current
@@ -110,6 +138,19 @@ export function SphereStage({
   return (
     <div className="relative h-full w-full">
       <div ref={ref} className="h-full w-full" />
+      {gyro && gyroAvail && (
+        <button
+          onClick={toggleGyro}
+          aria-label={t.g.gyro}
+          aria-pressed={gyroOn}
+          title={t.g.gyro}
+          className={`glass-chip absolute right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1.25rem,env(safe-area-inset-bottom))] z-10 grid h-11 w-11 cursor-pointer place-items-center rounded-full ${
+            gyroOn ? 'text-accent-soft' : 'text-ink-muted hover:text-ink'
+          }`}
+        >
+          <IconCompass className="h-5 w-5" />
+        </button>
+      )}
       {!loaded && <RingLoader />}
     </div>
   )
