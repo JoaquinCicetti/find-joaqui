@@ -15,7 +15,7 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
   },
   sky: {
     'sky-color': '#0b1424',
-    'horizon-color': '#3a66c4',
+    'horizon-color': '#42599b',
     'fog-color': '#0e1116',
     'sky-horizon-blend': 0.7,
     'horizon-fog-blend': 0.6,

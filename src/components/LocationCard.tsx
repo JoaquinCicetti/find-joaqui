@@ -1,5 +1,6 @@
 import { asset, type MediaItem, type Spot } from '../data/panoramas'
 import { countryName, formatDate, useLang } from '../i18n'
+import { IconClose } from './icons'
 
 interface LocationCardProps {
   spot: Spot
@@ -27,9 +28,9 @@ export function LocationCard({
         <button
           onClick={onClose}
           aria-label={t.closeCard}
-          className="glass-chip absolute -top-3 -right-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-full text-sm text-ink-muted hover:text-ink"
+          className="glass-chip absolute -top-3 -right-3 z-10 grid h-9 w-9 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
         >
-          ✕
+          <IconClose className="h-4 w-4" />
         </button>
         <img
           src={asset(active.thumb)}

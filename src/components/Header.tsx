@@ -1,5 +1,6 @@
 import { countryCount, media, placeCount } from '../data/panoramas'
 import { useLang, type Lang } from '../i18n'
+import { IconSearch } from './icons'
 
 function LangToggle() {
   const { lang, setLang } = useLang()
@@ -45,7 +46,8 @@ export function Header({ onPlay }: { onPlay?: () => void }) {
         {onPlay && (
           <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4">
             <button onClick={onPlay} className="btn-primary">
-              🔍 {t.g.cta}
+              <IconSearch className="h-4 w-4 opacity-80" />
+              {t.g.cta}
             </button>
             {best > 0 && (
               <span className="glass-chip rounded-full px-3.5 py-1.5 font-mono text-[11px] text-ink-muted">

@@ -12,6 +12,7 @@ import {
 } from '../game/joaqui'
 import { fetchTop, submitScore, type ScoreEntry } from '../game/api'
 import { useLang } from '../i18n'
+import { IconClose, IconSearch } from './icons'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
 
 type Phase = 'intro' | 'guess' | 'reveal' | 'done'
@@ -151,7 +152,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                 aria-label={g.close}
                 className="glass-chip pointer-events-auto grid h-9 w-9 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
               >
-                ✕
+                <IconClose className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -188,7 +189,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                   Total: <span className="text-accent-soft">{total}</span>
                 </p>
                 <button onClick={next} className="btn-primary mt-1 px-8">
-                  {g.next} →
+                  {g.next}
                 </button>
               </div>
             )}
@@ -218,8 +219,10 @@ function IntroPanel({
   return (
     <div className="absolute inset-0 grid place-items-center p-4">
       <div className="glass anim-scale w-[min(100%,26rem)] rounded-3xl p-7 text-center">
-        <p className="text-4xl">🔍</p>
-        <h2 className="font-display mt-2 text-3xl font-medium">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-white/10 bg-white/[0.04] shadow-[0_0_44px_rgba(157,177,217,0.22)]">
+          <IconSearch className="h-9 w-9 text-accent-soft/75" />
+        </div>
+        <h2 className="font-display mt-4 text-3xl font-medium">
           {g.introTitle}
         </h2>
         <p className="mt-3 text-sm leading-relaxed text-ink-muted">
@@ -240,7 +243,7 @@ function IntroPanel({
             {g.later}
           </button>
           <button onClick={onStart} className="btn-primary px-8">
-            {g.start} →
+            {g.start}
           </button>
         </div>
       </div>
