@@ -77,10 +77,7 @@ export function LocationCard({
             ))}
           </div>
         )}
-        <button
-          onClick={onView}
-          className="btn-accent mt-3 w-full cursor-pointer rounded-full px-5 py-2.5 text-sm font-semibold"
-        >
+        <button onClick={onView} className="btn-primary mt-3 w-full">
           {active.kind === '360' ? t.enter : t.viewPhoto}
         </button>
       </div>

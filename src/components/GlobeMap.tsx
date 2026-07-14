@@ -6,23 +6,44 @@ import { countryName, formatDate, useLang, type Lang } from '../i18n'
 import { LocationCard } from './LocationCard'
 
 // Solid two-tone globe: dark land, deep-blue water. No labels, no lines.
+// The sky block draws a soft atmospheric halo that hugs the globe's rim
+// (and fades out as you zoom in) — planet, not videogame map.
 const MAP_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
     ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
   },
+  sky: {
+    'sky-color': '#0b1424',
+    'horizon-color': '#3a66c4',
+    'fog-color': '#0e1116',
+    'sky-horizon-blend': 0.7,
+    'horizon-fog-blend': 0.6,
+    'fog-ground-blend': 0.85,
+    'atmosphere-blend': [
+      'interpolate',
+      ['linear'],
+      ['zoom'],
+      0,
+      0.8,
+      4,
+      0.35,
+      7,
+      0,
+    ],
+  },
   layers: [
     {
       id: 'land',
       type: 'background',
-      paint: { 'background-color': '#1a202b' },
+      paint: { 'background-color': '#1d242f' },
     },
     {
       id: 'water',
       type: 'fill',
       source: 'ofm',
       'source-layer': 'water',
-      paint: { 'fill-color': '#132c5c' },
+      paint: { 'fill-color': '#122e63' },
     },
   ],
 }

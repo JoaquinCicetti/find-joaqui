@@ -23,6 +23,8 @@ interface SphereStageProps {
   markers: StageMarker[]
   onPick?: (loc: JoaquiLocation) => void
   navbar?: boolean
+  /** when set, the camera glides to this view (e.g. the reveal) */
+  focus?: { yaw: number; pitch: number } | null
 }
 
 /** 360° pano that reports clicked view angles and renders AR markers. */
@@ -31,6 +33,7 @@ export function SphereStage({
   markers,
   onPick,
   navbar = true,
+  focus = null,
 }: SphereStageProps) {
   const ref = useRef<HTMLDivElement>(null)
   const viewerRef = useRef<Viewer | null>(null)
@@ -84,6 +87,12 @@ export function SphereStage({
       // viewer being torn down mid-update — safe to ignore
     }
   }, [markers, ready])
+
+  useEffect(() => {
+    const viewer = viewerRef.current
+    if (!viewer || !ready || !focus) return
+    viewer.animate({ yaw: focus.yaw, pitch: focus.pitch, speed: '4rpm' })
+  }, [focus, ready])
 
   return <div ref={ref} className="h-full w-full" />
 }

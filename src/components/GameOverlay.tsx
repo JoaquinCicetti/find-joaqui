@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { MediaItem } from '../data/panoramas'
 import {
   allLocations,
+  isSphereLoc,
   pickRounds,
   playableItems,
   scoreGuess,
@@ -96,6 +97,11 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
               markers={markers}
               onPick={phase === 'guess' ? setGuess : undefined}
               navbar={false}
+              focus={
+                phase === 'reveal' && isSphereLoc(locs[item.id])
+                  ? (locs[item.id] as { yaw: number; pitch: number })
+                  : null
+              }
             />
           ) : (
             <PhotoStage
@@ -106,18 +112,44 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
           )}
 
           {/* HUD */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4">
-            <span className="glass-chip rounded-full px-4 py-1.5 font-mono text-xs">
-              {g.round(i + 1, rounds.length)} · {item.place}
-            </span>
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+            <div className="flex flex-col items-start gap-1.5">
+              <span className="glass-chip flex items-center gap-2.5 rounded-full px-4 py-2">
+                <span className="flex items-center gap-1" aria-hidden>
+                  {rounds.map((_, n) => (
+                    <i
+                      key={n}
+                      className={`h-1.5 w-1.5 rounded-full ${
+                        n < i
+                          ? 'bg-accent-soft'
+                          : n === i
+                            ? 'bg-ink'
+                            : 'bg-white/20'
+                      }`}
+                    />
+                  ))}
+                </span>
+                <span className="font-mono text-xs">
+                  {g.round(i + 1, rounds.length)}
+                </span>
+              </span>
+              <span className="glass-chip rounded-full px-4 py-1 text-[11px] text-ink-muted">
+                {item.place}
+              </span>
+            </div>
             <div className="flex items-center gap-2">
-              <span className="glass-chip rounded-full px-4 py-1.5 font-mono text-xs text-accent-soft">
-                {total} pts
+              <span className="glass-chip rounded-full px-4 py-1.5 text-right">
+                <span className="font-display text-lg font-medium text-accent-soft">
+                  {total}
+                </span>
+                <span className="ms-1.5 font-mono text-[10px] tracking-wider text-ink-muted uppercase">
+                  pts
+                </span>
               </span>
               <button
                 onClick={onClose}
                 aria-label={g.close}
-                className="glass-chip pointer-events-auto grid h-8 w-8 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
+                className="glass-chip pointer-events-auto grid h-9 w-9 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
               >
                 ✕
               </button>
@@ -133,7 +165,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                 {guess && (
                   <button
                     onClick={confirm}
-                    className="btn-accent anim-rise pointer-events-auto cursor-pointer rounded-full px-8 py-3 text-sm font-semibold shadow-lg"
+                    className="btn-primary anim-rise pointer-events-auto px-8 py-3 shadow-lg"
                   >
                     {g.confirm}
                   </button>
@@ -152,10 +184,10 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                       ? g.away360(result.deg.toFixed(0))
                       : g.awayPhoto(result.pct.toFixed(0))}
                 </p>
-                <button
-                  onClick={next}
-                  className="btn-accent mt-1 cursor-pointer rounded-full px-8 py-2.5 text-sm font-semibold"
-                >
+                <p className="font-mono text-xs text-ink-muted">
+                  Total: <span className="text-accent-soft">{total}</span>
+                </p>
+                <button onClick={next} className="btn-primary mt-1 px-8">
                   {g.next} →
                 </button>
               </div>
@@ -204,16 +236,10 @@ function IntroPanel({
           ))}
         </ol>
         <div className="mt-7 flex items-center justify-center gap-3">
-          <button
-            onClick={onClose}
-            className="glass-chip cursor-pointer rounded-full px-6 py-2.5 text-sm text-ink-muted hover:text-ink"
-          >
+          <button onClick={onClose} className="btn-ghost">
             {g.later}
           </button>
-          <button
-            onClick={onStart}
-            className="btn-accent cursor-pointer rounded-full px-8 py-2.5 text-sm font-semibold"
-          >
+          <button onClick={onStart} className="btn-primary px-8">
             {g.start} →
           </button>
         </div>
@@ -244,6 +270,12 @@ function DonePanel({
   useEffect(() => {
     fetchTop().then(({ top }) => setTop(top))
   }, [])
+
+  // personal record, shown next to the play button on the main page
+  useEffect(() => {
+    const prev = Number(localStorage.getItem('joaqui-best') ?? 0)
+    if (total > prev) localStorage.setItem('joaqui-best', String(total))
+  }, [total])
 
   const save = async () => {
     const clean = name.trim().slice(0, 24)
@@ -281,7 +313,7 @@ function DonePanel({
             <button
               onClick={save}
               disabled={!name.trim() || state === 'saving'}
-              className="btn-accent shrink-0 cursor-pointer rounded-full px-5 py-2.5 text-sm font-semibold disabled:cursor-default disabled:opacity-40"
+              className="btn-primary shrink-0 px-5"
             >
               {state === 'saving' ? g.saving : g.save}
             </button>
@@ -321,16 +353,10 @@ function DonePanel({
         )}
 
         <div className="mt-7 flex items-center justify-center gap-3">
-          <button
-            onClick={onClose}
-            className="glass-chip cursor-pointer rounded-full px-6 py-2.5 text-sm text-ink-muted hover:text-ink"
-          >
+          <button onClick={onClose} className="btn-ghost">
             {g.close}
           </button>
-          <button
-            onClick={onAgain}
-            className="btn-accent cursor-pointer rounded-full px-7 py-2.5 text-sm font-semibold"
-          >
+          <button onClick={onAgain} className="btn-primary px-7">
             {g.again}
           </button>
         </div>
