@@ -1,0 +1,422 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Fraunces Variable', Georgia, serif;
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+  /* Brand — deep blue by default; change these four to re-skin the site */
+  --color-accent: #2e63e7;
+  --color-accent-deep: #1d47b8;
+  --color-accent-soft: #7fa3f5;
+
+  --color-paper: #0e1116; /* page background */
+  --color-ink: #e7e9ee;
+  --color-ink-muted: #8b919e;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /* Frosted glass panels floating over the map */
+  .glass {
+    background: rgba(16, 20, 28, 0.6);
+    backdrop-filter: blur(16px) saturate(1.2);
+    -webkit-backdrop-filter: blur(16px) saturate(1.2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.45);
+  }
+
+  .glass-chip {
+    background: rgba(16, 20, 28, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  }
+
+  .btn-accent {
+    background: var(--color-accent);
+    color: #fff;
+    transition:
+      background 150ms ease,
+      transform 150ms ease;
+  }
+  .btn-accent:hover {
+    background: var(--color-accent-deep);
+    transform: translateY(-1px);
+  }
+  .btn-accent:focus-visible {
+    outline: 2px solid var(--color-accent-soft);
+    outline-offset: 2px;
+  }
+}
+
+/* ---- Map markers: tiny photo miniatures ----
+   360° panorama = circle (a sphere), photograph = rounded square (a frame). */
+.geo-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 9999px;
+  background-size: cover;
+  background-position: center;
+  background-color: var(--color-accent-deep);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
+  box-shadow:
+    0 0 0 2px rgba(46, 99, 231, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.65);
+  cursor: pointer;
+  transition:
+    width 180ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    height 180ms cubic-bezier(0.2, 0.8, 0.3, 1),
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+.geo-marker--photo {
+  border-radius: 7px;
+}
+.geo-marker.is-near,
+.geo-marker:hover,
+.geo-marker.is-active {
+  width: 56px;
+  height: 56px;
+  border-color: rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 0 0 2.5px var(--color-accent),
+    0 0 26px rgba(46, 99, 231, 0.55),
+    0 8px 24px rgba(0, 0, 0, 0.7);
+  z-index: 6 !important;
+}
+.geo-marker:focus-visible {
+  outline: 2px solid var(--color-accent-soft);
+  outline-offset: 3px;
+  z-index: 6 !important;
+}
+
+/* several shots in one place: stacked-deck look + count badge */
+.geo-marker--stack {
+  position: relative;
+}
+.geo-marker--stack::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(230, 236, 250, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  transform: rotate(-9deg) translate(-3px, 1px);
+  z-index: -1;
+  transition: transform 180ms ease;
+}
+.geo-marker--stack.is-near::before,
+.geo-marker--stack:hover::before,
+.geo-marker--stack.is-active::before {
+  transform: rotate(-6deg) translate(-5px, 2px);
+}
+.geo-marker--stack::after {
+  content: attr(data-count);
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: var(--color-accent);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+
+/* bigger touch targets where there is no cursor to snap */
+@media (pointer: coarse) {
+  .geo-marker {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+/* ---- proximity label: floating editorial text + leader line ---- */
+.near-label {
+  transition:
+    transform 130ms ease-out,
+    opacity 160ms ease;
+  text-shadow:
+    0 1px 3px rgba(4, 6, 10, 0.9),
+    0 2px 14px rgba(4, 6, 10, 0.8);
+  will-change: transform;
+}
+.near-line {
+  transition: opacity 160ms ease;
+  filter: drop-shadow(0 1px 2px rgba(4, 6, 10, 0.8));
+}
+
+/* ---- film-grain texture (tiny inline SVG noise, tiled) ---- */
+.grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+}
+
+/* Quiet MapLibre chrome */
+.maplibregl-ctrl-group {
+  background: rgba(16, 20, 28, 0.7) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  overflow: hidden;
+}
+.maplibregl-ctrl-group button {
+  background: transparent !important;
+}
+.maplibregl-ctrl-group button .maplibregl-ctrl-icon {
+  filter: invert(0.9);
+}
+.maplibregl-ctrl-group button + button {
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(16, 20, 28, 0.6) !important;
+  font-size: 10px;
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-attrib a {
+  color: var(--color-ink-muted) !important;
+}
+.maplibregl-canvas:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+
+/* ---- Photo Sphere Viewer chrome ---- */
+.psv-navbar {
+  background: rgba(10, 13, 18, 0.6);
+  backdrop-filter: blur(8px);
+}
+
+/* ---- Perpetual zoom rings: organic shapes drifting out from the center.
+   Linear timing + evenly staggered negative delays (one ring per tenth of
+   the period) make the loop seamless — there is no visible restart. ---- */
+.ring-stage {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+.zoom-ring {
+  --ring-duration: 48s;
+  grid-area: 1 / 1;
+  width: 70vmin;
+  aspect-ratio: 1;
+  border: 1.5px solid var(--ring-color);
+  box-shadow:
+    0 0 34px color-mix(in srgb, var(--ring-color) 6%, transparent),
+    inset 0 0 26px color-mix(in srgb, var(--ring-color) 3%, transparent);
+  opacity: 0;
+  /* delay divisor must match RING_COUNT in RingField.tsx */
+  animation: ring-zoom var(--ring-duration) linear infinite;
+  animation-delay: calc(var(--i) * (var(--ring-duration) / -10));
+  will-change: transform, opacity;
+}
+@keyframes ring-zoom {
+  0% {
+    transform: scale(0.06) rotate(0deg);
+    opacity: 0;
+  }
+  25% {
+    opacity: var(--ring-alpha, 0.12);
+  }
+  55% {
+    opacity: var(--ring-alpha, 0.12);
+  }
+  100% {
+    transform: scale(3) rotate(90deg);
+    opacity: 0;
+  }
+}
+/* four alternating shapes/colors — cool palette around the brand blue */
+.zoom-ring-0 {
+  --ring-color: var(--color-accent);
+  --ring-alpha: 0.06;
+  border-radius: 42% 58% 55% 45% / 50% 44% 56% 50%;
+}
+.zoom-ring-1 {
+  --ring-color: #3ecfc0; /* teal */
+  --ring-alpha: 0.04;
+  border-radius: 58% 42% 46% 54% / 44% 58% 42% 56%;
+}
+.zoom-ring-2 {
+  --ring-color: var(--color-accent-soft);
+  --ring-alpha: 0.05;
+  border-radius: 50% 50% 42% 58% / 56% 46% 54% 44%;
+}
+.zoom-ring-3 {
+  --ring-color: #8a6cf5; /* violet */
+  --ring-alpha: 0.035;
+  border-radius: 46% 54% 58% 42% / 48% 56% 44% 52%;
+}
+
+/* ---- Encuentra al Joaqui: AR reticle (player guess) + reveal marker ---- */
+.ar-reticle {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  pointer-events: none;
+}
+.ar-reticle::before {
+  /* outer pulsing ring */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-accent-soft);
+  animation: ar-pulse 1.6s ease-out infinite;
+}
+.ar-reticle i {
+  /* steady mid ring */
+  position: absolute;
+  inset: 14px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--color-accent);
+  box-shadow:
+    0 0 12px rgba(46, 99, 231, 0.5),
+    inset 0 0 8px rgba(46, 99, 231, 0.3);
+}
+.ar-reticle::after {
+  /* center dot */
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: var(--color-accent-soft);
+  box-shadow: 0 0 8px var(--color-accent-soft);
+}
+@keyframes ar-pulse {
+  0% {
+    transform: scale(0.55);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.15);
+    opacity: 0;
+  }
+}
+.ar-truth {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  font-size: 26px;
+  background: rgba(16, 20, 28, 0.7);
+  border: 2px solid var(--color-accent-soft);
+  box-shadow:
+    0 0 0 3px rgba(46, 99, 231, 0.35),
+    0 0 28px rgba(127, 163, 245, 0.55);
+  animation: ar-pop 380ms cubic-bezier(0.2, 0.8, 0.3, 1.4) both;
+  pointer-events: none;
+}
+@keyframes ar-pop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ---- Motion: entrances for the floating panels ---- */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-rise {
+  animation: rise-in 320ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.anim-scale {
+  animation: scale-in 260ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+}
+.anim-fade {
+  animation: fade-in 220ms ease both;
+}
+
+/* When the View Transitions API drives the card→viewer morph,
+   skip the fallback entrance animations so they don't double up. */
+html.vt .anim-scale {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .geo-marker,
+  .btn-accent {
+    transition: none;
+  }
+  .geo-marker {
+    animation: none;
+  }
+  .anim-rise,
+  .anim-scale,
+  .anim-fade {
+    animation: none;
+  }
+  /* a frozen mid-zoom ring would look broken — hide the layer entirely */
+  .ring-stage {
+    display: none;
+  }
+  .ar-reticle::before {
+    animation: none;
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  .ar-truth {
+    animation: none;
+  }
+}
