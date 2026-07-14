@@ -89,7 +89,7 @@ export function CalibrationSuite() {
     <div className="fixed inset-0 z-50 flex flex-col bg-paper">
       <header className="glass z-10 m-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-3">
         <p className="font-mono text-[11px] tracking-widest text-accent-soft uppercase">
-          Calibración · Encuentra al Joaqui
+          Calibración · Buscando al Joaqui
         </p>
         <span className="glass-chip rounded-full px-3 py-1 font-mono text-xs">
           {placedCount}/{media.length} ubicadas

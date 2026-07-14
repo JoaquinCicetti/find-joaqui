@@ -1,4 +1,4 @@
-# Encuentra al Joaqui 🔍
+# Buscando al Joaqui 🔍
 
 A *Where's Wally?*-style game hidden inside a collection of aerial 360°
 panoramas. A dark interactive globe (MapLibre GL) holds every shot; Joaqui is

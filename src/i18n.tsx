@@ -71,8 +71,8 @@ const dictionaries: Record<Lang, Dict> = {
     viewPhotoAria: 'Fotografía',
     footer: '© 2026 Joaquín Cicetti',
     g: {
-      cta: 'Encuentra al Joaqui',
-      introTitle: 'Encuentra al Joaqui',
+      cta: 'Buscando al Joaqui',
+      introTitle: 'Buscando al Joaqui',
       introBody: (n) =>
         `Joaqui se escondió en ${n} de estas fotos, al estilo ¿Dónde está Wally? ¿Tenés buen ojo?`,
       how1: 'Explorá la escena: girá y hacé zoom',
