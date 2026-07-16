@@ -37,6 +37,12 @@ interface GameDict {
   again: string
   close: string
   gyro: string
+  seeTop: string
+  scName: string
+  scTime: string
+  scPts: string
+  scBack: string
+  scEmpty: string
 }
 
 interface Dict {
@@ -117,6 +123,12 @@ const dictionaries: Record<Lang, Dict> = {
       again: 'Jugar de nuevo',
       close: 'Cerrar',
       gyro: 'Mirar moviendo el celular',
+      seeTop: 'Ver ranking',
+      scName: 'Nombre',
+      scTime: 'Tiempo',
+      scPts: 'Puntos',
+      scBack: 'Volver al globo',
+      scEmpty: 'Todavía no hay puntajes',
     },
   },
   en: {
@@ -171,6 +183,12 @@ const dictionaries: Record<Lang, Dict> = {
       again: 'Play again',
       close: 'Close',
       gyro: 'Look around by moving your phone',
+      seeTop: 'Full leaderboard',
+      scName: 'Name',
+      scTime: 'Time',
+      scPts: 'Points',
+      scBack: 'Back to the globe',
+      scEmpty: 'No scores yet',
     },
   },
 }

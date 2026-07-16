@@ -3,6 +3,7 @@ import { flushSync } from 'react-dom'
 import { Header } from './components/Header'
 import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
+import { ScoringPage } from './components/ScoringPage'
 import { Starfield } from './components/Starfield'
 import { RingField, RingLoader } from './components/RingField'
 import { displaySrc, type MediaItem, type Spot } from './data/panoramas'
@@ -31,6 +32,10 @@ const isCalibrate =
   typeof window !== 'undefined' &&
   (new URLSearchParams(window.location.search).has('calibrate') ||
     new URLSearchParams(window.location.search).has('admin'))
+
+// standalone leaderboard page (vercel.json rewrites /scoring to the SPA)
+const isScoring =
+  typeof window !== 'undefined' && window.location.pathname === '/scoring'
 
 const supportsVT =
   typeof document !== 'undefined' && 'startViewTransition' in document
@@ -349,6 +354,8 @@ export default function App() {
         <Suspense fallback={null}>
           <CalibrationSuite />
         </Suspense>
+      ) : isScoring ? (
+        <ScoringPage />
       ) : (
         <Page />
       )}

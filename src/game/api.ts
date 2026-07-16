@@ -1,9 +1,16 @@
 export interface ScoreEntry {
   name: string
   score: number
+  /** run duration in seconds; older entries may not have one */
+  time?: number | null
 }
 
 const LOCAL_KEY = 'joaqui-local-scores'
+
+/** m:ss for a duration in seconds. */
+export function formatSeconds(s: number): string {
+  return `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, '0')}`
+}
 
 function localTop(): ScoreEntry[] {
   try {
@@ -43,18 +50,19 @@ export async function fetchTop(): Promise<{
 export async function submitScore(
   name: string,
   score: number,
+  time?: number,
 ): Promise<{ top: ScoreEntry[]; remote: boolean }> {
   try {
     const res = await fetch('/api/scores', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ name, score }),
+      body: JSON.stringify({ name, score, time }),
     })
     if (!res.ok) throw new Error(String(res.status))
     const data = (await res.json()) as { top: ScoreEntry[] }
-    localSave({ name, score }) // mirror locally too
+    localSave({ name, score, time }) // mirror locally too
     return { top: data.top, remote: true }
   } catch {
-    return { top: localSave({ name, score }), remote: false }
+    return { top: localSave({ name, score, time }), remote: false }
   }
 }
