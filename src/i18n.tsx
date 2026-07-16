@@ -45,11 +45,16 @@ interface Dict {
   sub: (n: number, places: number, countries: number) => string
   pano: string
   photo: string
+  /** short row labels in the location card */
+  photosRow: string
+  panosRow: string
   nItems: (n: number) => string
   enter: string
   viewPhoto: string
   closeCard: string
   closeViewer: string
+  prevShot: string
+  nextShot: string
   view360: string
   viewPhotoAria: string
   footer: string
@@ -64,11 +69,15 @@ const dictionaries: Record<Lang, Dict> = {
       `Me escondí en ${n} fotos aéreas en 360°, por ${places} rincones de ${countries} países. Girá el globo y encontrame.`,
     pano: 'Panorámica 360°',
     photo: 'Fotografía',
+    photosRow: 'Fotos',
+    panosRow: '360°',
     nItems: (n) => `${n} panorámicas`,
     enter: 'Entrar en la esfera',
     viewPhoto: 'Ver fotografía',
     closeCard: 'Cerrar tarjeta',
     closeViewer: 'Cerrar visor',
+    prevShot: 'Anterior',
+    nextShot: 'Siguiente',
     view360: 'Vista 360°',
     viewPhotoAria: 'Fotografía',
     footer: '© 2026 Joaquín Cicetti',
@@ -111,11 +120,15 @@ const dictionaries: Record<Lang, Dict> = {
       `I hid in ${n} aerial 360° shots, across ${places} corners of ${countries} countries. Spin the globe and find me.`,
     pano: '360° panorama',
     photo: 'Photograph',
+    photosRow: 'Photos',
+    panosRow: '360°',
     nItems: (n) => `${n} panoramas`,
     enter: 'Step inside',
     viewPhoto: 'View photograph',
     closeCard: 'Close location card',
     closeViewer: 'Close viewer',
+    prevShot: 'Previous',
+    nextShot: 'Next',
     view360: '360° view',
     viewPhotoAria: 'Photograph',
     footer: '© 2026 Joaquín Cicetti',

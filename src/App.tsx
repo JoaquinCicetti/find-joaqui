@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Header } from './components/Header'
+import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
 import { Starfield } from './components/Starfield'
 import { RingField } from './components/RingField'
@@ -51,8 +52,59 @@ function withTransition(fn: () => void) {
   }
 }
 
-/** Bottom CTA bar: description + Play + record. Slides away when a card is
- *  open above so the two never fight for attention. */
+// ---- Deep-linkable selection: ?spot=<id> opens a place card,
+//      ?view=<mediaId> opens a shot in the viewer. The address bar stays in
+//      sync so any view is shareable, and back/forward restores it. ----
+type Selection = { spot?: string; view?: string }
+
+function readUrlSelection(): Selection {
+  const p = new URLSearchParams(window.location.search)
+  return { spot: p.get('spot') ?? undefined, view: p.get('view') ?? undefined }
+}
+
+function urlFor(sel: Selection): string {
+  const p = new URLSearchParams(window.location.search)
+  p.delete('spot')
+  p.delete('view')
+  if (sel.view) p.set('view', sel.view)
+  else if (sel.spot) p.set('spot', sel.spot)
+  const q = p.toString()
+  return `${window.location.pathname}${q ? `?${q}` : ''}`
+}
+
+function writeUrl(sel: Selection, push: boolean) {
+  const url = urlFor(sel)
+  if (url === `${window.location.pathname}${window.location.search}`) return
+  if (push) window.history.pushState(null, '', url)
+  else window.history.replaceState(null, '', url)
+}
+
+/** Resolve the current URL to the state it represents (used on load and on
+ *  browser back/forward). A ?view wins over ?spot. */
+function resolveSelection(sel: Selection): {
+  selected: Spot | null
+  active: MediaItem | null
+  viewing: MediaItem | null
+} {
+  if (sel.view) {
+    const item = media.find((m) => m.id === sel.view)
+    if (item) return { selected: null, active: item, viewing: item }
+  }
+  if (sel.spot) {
+    const spot = spots.find((s) => s.id === sel.spot)
+    if (spot)
+      return {
+        selected: spot,
+        active: spot.items[spot.items.length - 1],
+        viewing: null,
+      }
+  }
+  return { selected: null, active: null, viewing: null }
+}
+
+/** Floating bottom CTA bar: a line about the game + Play + record.
+ *  Slides away when a card is open above so the two never fight for
+ *  attention. Text stays visible on phones. */
 function GameFooter({
   onPlay,
   hidden,
@@ -64,27 +116,24 @@ function GameFooter({
   const best = Number(localStorage.getItem('joaqui-best') ?? 0)
   return (
     <div
-      className={`pointer-events-none absolute right-0 bottom-0 left-0 z-10 flex justify-center transition-[transform,opacity] duration-500 ease-out sm:p-6 ${
-        hidden ? 'translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+      className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-3 pt-3 pb-[calc(2.5rem+env(safe-area-inset-bottom))] transition-[transform,opacity] duration-500 ease-out sm:px-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] ${
+        hidden ? 'pointer-events-none translate-y-[130%] opacity-0' : 'opacity-100'
       }`}
     >
-      {/* translucent edge-to-edge bar on phones, floating card from sm up */}
-      <div className="glass anim-rise pointer-events-auto flex w-full items-center gap-4 border-x-0 border-b-0 pt-3 pr-[max(1rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] sm:w-auto sm:max-w-2xl sm:rounded-2xl sm:border sm:px-6 sm:py-4">
-        <div className="hidden min-w-0 flex-1 sm:block">
-          <p className="text-sm leading-relaxed text-ink-muted">
-            {t.sub(media.length, placeCount, countryCount)}
-          </p>
-          <p className="mt-1 text-[11px] text-ink-muted/70">{t.footer}</p>
-        </div>
+      <div className="glass anim-rise pointer-events-auto flex w-full max-w-xl flex-col gap-3 rounded-2xl px-5 py-4 sm:flex-row sm:items-center sm:gap-5 sm:px-6">
+        <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink-muted sm:text-sm">
+          {t.sub(media.length, placeCount, countryCount)}
+        </p>
         {onPlay && (
-          <div className="flex flex-1 flex-wrap items-center justify-end gap-2.5 sm:flex-none">
+          <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
             {best > 0 && (
-              <span className="glass-chip rounded-full px-3.5 py-1.5 font-mono text-[11px] text-ink-muted">
+              <span className="font-mono text-[11px] tracking-wide text-ink-muted">
                 {t.g.best(best)}
               </span>
             )}
             <button onClick={onPlay} className="btn-primary">
               {t.g.cta}
+              <IconArrow className="btn-arrow h-4 w-4" />
             </button>
           </div>
         )}
@@ -94,9 +143,15 @@ function GameFooter({
 }
 
 function Page() {
-  const [selected, setSelected] = useState<Spot | null>(null)
-  const [active, setActive] = useState<MediaItem | null>(null)
-  const [viewing, setViewing] = useState<MediaItem | null>(null)
+  const [selected, setSelected] = useState<Spot | null>(
+    () => resolveSelection(readUrlSelection()).selected,
+  )
+  const [active, setActive] = useState<MediaItem | null>(
+    () => resolveSelection(readUrlSelection()).active,
+  )
+  const [viewing, setViewing] = useState<MediaItem | null>(
+    () => resolveSelection(readUrlSelection()).viewing,
+  )
   const [gameOpen, setGameOpen] = useState(false)
   const playable = playableItems().length
   // any surface shown above the globe hides the footer so they don't collide
@@ -106,12 +161,27 @@ function Page() {
     document.documentElement.classList.toggle('vt', supportsVT)
   }, [])
 
-  // alert first-time visitors about the game (once, and only if it has content)
+  // alert first-time visitors about the game (once, and only if it has content
+  // and they didn't arrive on a deep link to a place/shot)
   useEffect(() => {
     if (!playable || localStorage.getItem('joaqui-intro-seen')) return
+    const s = readUrlSelection()
+    if (s.spot || s.view) return
     const id = setTimeout(() => setGameOpen(true), 2200)
     return () => clearTimeout(id)
   }, [playable])
+
+  // keep state in sync with the URL on browser back/forward (and manual edits)
+  useEffect(() => {
+    const onPop = () => {
+      const next = resolveSelection(readUrlSelection())
+      setViewing(next.viewing)
+      setSelected(next.selected)
+      setActive(next.active)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   const closeGame = () => {
     localStorage.setItem('joaqui-intro-seen', '1')
@@ -121,24 +191,49 @@ function Page() {
   const selectSpot = (spot: Spot | null) => {
     setSelected(spot)
     setActive(spot ? spot.items[spot.items.length - 1] : null)
+    writeUrl(spot ? { spot: spot.id } : {}, Boolean(spot))
   }
 
-  const openViewer = (item: MediaItem) =>
+  const openViewer = (item: MediaItem) => {
     withTransition(() => {
       setViewing(item)
       setSelected(null) // the card hands its snapshot to the viewer
     })
+    writeUrl({ view: item.id }, true)
+  }
+
+  // arrow navigation inside the viewer — swap the shot, no history spam
+  const navigateViewer = (item: MediaItem) => {
+    setViewing(item)
+    setActive(item)
+    writeUrl({ view: item.id }, false)
+  }
+
+  // the shots the viewer can arrow through: this spot's photos, then its 360s
+  const viewerItems = (() => {
+    if (!viewing) return []
+    const spot = spots.find((s) => s.items.some((i) => i.id === viewing.id))
+    if (!spot) return [viewing]
+    return [
+      ...spot.items.filter((i) => i.kind === 'photo'),
+      ...spot.items.filter((i) => i.kind === '360'),
+    ]
+  })()
 
   const closeViewer = () => {
     const item = viewing
+    const spot = item
+      ? (spots.find((s) => s.items.includes(item)) ?? null)
+      : null
     withTransition(() => {
       setViewing(null)
       if (item) {
         // …and the viewer morphs back into the card, on the same shot
-        setSelected(spots.find((s) => s.items.includes(item)) ?? null)
+        setSelected(spot)
         setActive(item)
       }
     })
+    writeUrl(spot ? { spot: spot.id } : {}, false)
   }
 
   return (
@@ -173,7 +268,12 @@ function Page() {
       />
       {viewing && (
         <Suspense fallback={null}>
-          <MediaModal item={viewing} onClose={closeViewer} />
+          <MediaModal
+            item={viewing}
+            items={viewerItems}
+            onNavigate={navigateViewer}
+            onClose={closeViewer}
+          />
         </Suspense>
       )}
       {gameOpen && (
