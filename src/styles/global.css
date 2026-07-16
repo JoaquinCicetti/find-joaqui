@@ -499,8 +499,9 @@ body {
 }
 
 /* When the View Transitions API drives the card→viewer morph,
-   skip the fallback entrance animations so they don't double up. */
-html.vt .anim-scale {
+   skip the fallback entrance animation so they don't double up.
+   Only the media viewer morphs — panels that opt in via .vt-skip. */
+html.vt .vt-skip.anim-scale {
   animation: none;
 }
 

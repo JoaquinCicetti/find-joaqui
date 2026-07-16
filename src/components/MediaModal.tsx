@@ -107,7 +107,7 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
       {/* full-bleed on phones (the viewer must be bigger than the card that
           opened it), floating panel from sm up */}
       <div
-        className="glass anim-scale relative flex h-dvh w-full flex-col rounded-none p-3 sm:h-auto sm:w-[min(100%,72rem)] sm:rounded-3xl sm:p-4"
+        className="glass anim-scale vt-skip relative flex h-dvh w-full flex-col rounded-none p-3 sm:h-auto sm:w-[min(100%,72rem)] sm:rounded-3xl sm:p-4"
         style={{ viewTransitionName: 'media-panel' } as React.CSSProperties}
       >
         <button
