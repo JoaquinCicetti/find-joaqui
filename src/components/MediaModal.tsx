@@ -4,8 +4,9 @@ import { Viewer } from '@photo-sphere-viewer/core'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import { asset, formatCoords, type MediaItem } from '../data/panoramas'
+import { prefetchImage } from '../lib/prefetch'
 import { countryName, formatDate, useLang } from '../i18n'
-import { IconChevron, IconClose } from './icons'
+import { IconChevron, IconClose, IconExpand } from './icons'
 import { RingLoader } from './RingField'
 
 interface MediaModalProps {
@@ -52,16 +53,45 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
   const hasPrev = idx > 0
   const hasNext = idx >= 0 && idx < items.length - 1
 
+  const touchRef = useRef<{ x: number; y: number } | null>(null)
+  // CSS-emulated fullscreen — works everywhere, unlike the Fullscreen API
+  // which iOS Safari refuses on non-video elements
+  const [expanded, setExpanded] = useState(false)
+
+  // swipe left/right through the gallery (flat photos — 360s use drag to pan)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const p = e.touches[0]
+    touchRef.current = { x: p.clientX, y: p.clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const s = touchRef.current
+    touchRef.current = null
+    if (!s) return
+    const p = e.changedTouches[0]
+    const dx = p.clientX - s.x
+    const dy = p.clientY - s.y
+    // must be a decisive, mostly-horizontal flick
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return
+    if (dx > 0 && hasPrev) onNavigate(items[idx - 1])
+    else if (dx < 0 && hasNext) onNavigate(items[idx + 1])
+  }
+
+  // warm the shots on either side so arrowing through the gallery is instant
+  useEffect(() => {
+    if (items[idx - 1]) prefetchImage(items[idx - 1].src)
+    if (items[idx + 1]) prefetchImage(items[idx + 1].src)
+  }, [idx, items])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape') expanded ? setExpanded(false) : onClose()
       else if (e.key === 'ArrowLeft' && idx > 0) onNavigate(items[idx - 1])
       else if (e.key === 'ArrowRight' && idx < items.length - 1)
         onNavigate(items[idx + 1])
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [idx, items, onNavigate, onClose])
+  }, [idx, items, onNavigate, onClose, expanded])
 
   return createPortal(
     <div
@@ -88,16 +118,37 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
           <IconClose className="h-4 w-4" />
         </button>
 
-        <div className="relative min-h-0 flex-1 sm:h-[min(76vh,46rem)] sm:flex-none">
+        <div
+          className={
+            expanded
+              ? 'fixed inset-0 z-[60] bg-black'
+              : 'relative min-h-0 flex-1 sm:h-[min(76vh,46rem)] sm:flex-none'
+          }
+          onTouchStart={item.kind === 'photo' ? onTouchStart : undefined}
+          onTouchEnd={item.kind === 'photo' ? onTouchEnd : undefined}
+        >
           {item.kind === '360' ? (
             <SphereViewer item={item} />
           ) : (
-            <img
-              src={asset(item.src)}
-              alt={item.place}
-              decoding="async"
-              className="h-full w-full rounded-2xl object-contain"
-            />
+            <>
+              <img
+                src={asset(item.src)}
+                alt={item.place}
+                decoding="async"
+                className={`h-full w-full object-contain ${expanded ? '' : 'rounded-2xl'}`}
+              />
+              {/* flat photos have no PSV navbar — give them their own toggle */}
+              <button
+                onClick={() => setExpanded((v) => !v)}
+                aria-label={t.fullscreen}
+                aria-pressed={expanded}
+                title={t.fullscreen}
+                className="glass-chip absolute right-3 bottom-3 z-20 grid h-10 w-10 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
+                style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              >
+                <IconExpand className="h-4 w-4" />
+              </button>
+            </>
           )}
 
           {/* lightbox navigation: photos, then 360s */}

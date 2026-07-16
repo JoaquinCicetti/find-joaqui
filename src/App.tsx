@@ -5,24 +5,20 @@ import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
 import { Starfield } from './components/Starfield'
 import { RingField } from './components/RingField'
-import {
-  countryCount,
-  media,
-  placeCount,
-  spots,
-  type MediaItem,
-  type Spot,
-} from './data/panoramas'
-import { playableItems } from './game/joaqui'
+import { media, spots, type MediaItem, type Spot } from './data/panoramas'
+import { playableItems, playableStats } from './game/joaqui'
+import { onIdle, prefetchImage } from './lib/prefetch'
 import { LangProvider, useLang } from './i18n'
 
-// Photo Sphere Viewer pulls in three.js — only load it when a viewer is opened
-const MediaModal = lazy(() =>
-  import('./components/MediaModal').then((m) => ({ default: m.MediaModal })),
-)
-const GameOverlay = lazy(() =>
-  import('./components/GameOverlay').then((m) => ({ default: m.GameOverlay })),
-)
+// Photo Sphere Viewer pulls in three.js — only load it when a viewer is opened.
+// The import factories are named so we can warm the chunk *before* the click
+// (on idle / on button press) and have the surface open instantly.
+const importMediaModal = () =>
+  import('./components/MediaModal').then((m) => ({ default: m.MediaModal }))
+const importGameOverlay = () =>
+  import('./components/GameOverlay').then((m) => ({ default: m.GameOverlay }))
+const MediaModal = lazy(importMediaModal)
+const GameOverlay = lazy(importGameOverlay)
 const CalibrationSuite = lazy(() =>
   import('./components/CalibrationSuite').then((m) => ({
     default: m.CalibrationSuite,
@@ -114,6 +110,8 @@ function GameFooter({
 }) {
   const { t } = useLang()
   const best = Number(localStorage.getItem('joaqui-best') ?? 0)
+  // count the shots Joaqui is actually hidden in — not the whole library
+  const stats = playableStats()
   return (
     <div
       className={`pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-3 pt-3 pb-[calc(2.5rem+env(safe-area-inset-bottom))] transition-[transform,opacity] duration-500 ease-out sm:px-6 sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] ${
@@ -122,7 +120,7 @@ function GameFooter({
     >
       <div className="glass anim-rise pointer-events-auto flex w-full max-w-xl flex-col gap-3 rounded-2xl px-5 py-4 sm:flex-row sm:items-center sm:gap-5 sm:px-6">
         <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink-muted sm:text-sm">
-          {t.sub(media.length, placeCount, countryCount)}
+          {t.sub(stats.count, stats.places, stats.countries)}
         </p>
         {onPlay && (
           <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">
@@ -131,7 +129,12 @@ function GameFooter({
                 {t.g.best(best)}
               </span>
             )}
-            <button onClick={onPlay} className="btn-primary">
+            <button
+              onClick={onPlay}
+              onPointerDown={() => importGameOverlay()}
+              onMouseEnter={() => importGameOverlay()}
+              className="btn-primary"
+            >
               {t.g.cta}
               <IconArrow className="btn-arrow h-4 w-4" />
             </button>
@@ -160,6 +163,16 @@ function Page() {
   useEffect(() => {
     document.documentElement.classList.toggle('vt', supportsVT)
   }, [])
+
+  // Warm the heavy viewer/game chunks (Photo Sphere Viewer + three.js) once the
+  // page is idle, so the first Play / open-viewer feels instant instead of
+  // waiting on a fresh download.
+  useEffect(() => {
+    onIdle(() => {
+      importMediaModal()
+      if (playable) importGameOverlay()
+    })
+  }, [playable])
 
   // alert first-time visitors about the game (once, and only if it has content
   // and they didn't arrive on a deep link to a place/shot)
@@ -192,6 +205,13 @@ function Page() {
     setSelected(spot)
     setActive(spot ? spot.items[spot.items.length - 1] : null)
     writeUrl(spot ? { spot: spot.id } : {}, Boolean(spot))
+    // While the card is open, warm the viewer chunk and this spot's full-res
+    // shots so tapping through to the viewer opens without a load wait.
+    if (spot) {
+      importMediaModal()
+      prefetchImage(spot.items[spot.items.length - 1].src)
+      onIdle(() => spot.items.forEach((it) => prefetchImage(it.src)))
+    }
   }
 
   const openViewer = (item: MediaItem) => {

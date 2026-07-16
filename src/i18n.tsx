@@ -55,6 +55,7 @@ interface Dict {
   closeViewer: string
   prevShot: string
   nextShot: string
+  fullscreen: string
   view360: string
   viewPhotoAria: string
   footer: string
@@ -78,6 +79,7 @@ const dictionaries: Record<Lang, Dict> = {
     closeViewer: 'Cerrar visor',
     prevShot: 'Anterior',
     nextShot: 'Siguiente',
+    fullscreen: 'Pantalla completa',
     view360: 'Vista 360°',
     viewPhotoAria: 'Fotografía',
     footer: '© 2026 Joaquín Cicetti',
@@ -129,6 +131,7 @@ const dictionaries: Record<Lang, Dict> = {
     closeViewer: 'Close viewer',
     prevShot: 'Previous',
     nextShot: 'Next',
+    fullscreen: 'Fullscreen',
     view360: '360° view',
     viewPhotoAria: 'Photograph',
     footer: '© 2026 Joaquín Cicetti',

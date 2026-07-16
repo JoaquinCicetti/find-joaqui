@@ -70,6 +70,23 @@ export function IconChevron({ className }: { className?: string }) {
   )
 }
 
+export function IconExpand({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden
+    >
+      <path d="M8 3H3v5M16 3h5v5M21 16v5h-5M3 16v5h5" />
+    </svg>
+  )
+}
+
 export function IconClose({ className }: { className?: string }) {
   return (
     <svg

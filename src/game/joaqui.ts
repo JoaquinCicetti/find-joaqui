@@ -45,7 +45,22 @@ export function playableItems(): MediaItem[] {
   return media.filter((m) => locs[m.id] != null)
 }
 
-export const ROUNDS = 5
+/** Counts for the pitch banner — the set Joaqui is *actually* hidden in,
+ *  not the whole library. */
+export function playableStats(): {
+  count: number
+  places: number
+  countries: number
+} {
+  const items = playableItems()
+  return {
+    count: items.length,
+    places: new Set(items.map((m) => m.place)).size,
+    countries: new Set(items.map((m) => m.country).filter(Boolean)).size,
+  }
+}
+
+export const ROUNDS = 8
 export const MAX_ROUND_SCORE = 1000
 
 /** Fisher–Yates pick of up to ROUNDS playable shots. */
