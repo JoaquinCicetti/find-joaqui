@@ -148,10 +148,11 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
             />
           )}
 
-          {/* HUD */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 pt-[max(1rem,env(safe-area-inset-top))]">
-            <div className="flex flex-col items-start gap-1.5">
-              <span className="glass-chip flex items-center gap-2.5 rounded-full px-4 py-2">
+          {/* HUD: one compact toolbar (round · timer · score · close), with
+              the location chip as a second unit below the round card */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col items-start gap-3 p-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
+            <div className="flex w-full items-stretch gap-2 sm:gap-4">
+              <span className="glass-chip flex items-center gap-2.5 rounded-full px-4 py-3 sm:px-6 sm:py-4">
                 <span className="flex items-center gap-1" aria-hidden>
                   {rounds.map((_, n) => (
                     <i
@@ -166,35 +167,26 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                     />
                   ))}
                 </span>
-                <span className="font-mono text-xs">
+                <span className="sr-only font-mono text-xs sm:not-sr-only">
                   {g.round(i + 1, rounds.length)}
                 </span>
               </span>
-              <span className="glass-chip rounded-full px-4 py-1 text-[11px] text-ink-muted">
-                {item.place}
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              {phase === 'guess' && (
-                <span
-                  className={`glass-chip flex items-baseline gap-2 rounded-full px-3.5 py-1.5 font-mono text-sm tabular-nums ${
-                    remaining <= 10 ? 'text-red-400/90' : 'text-ink-muted'
-                  }`}
-                >
-                  <span>
-                    {Math.floor(remaining / 60)}:
-                    {String(remaining % 60).padStart(2, '0')}
-                  </span>
-                  <span
-                    className={
-                      remaining <= 10 ? undefined : 'text-accent-soft'
-                    }
-                  >
-                    {maxNow}
-                  </span>
+              <span
+                className={`glass-chip flex items-center justify-center gap-2 rounded-full px-3 font-mono text-sm tabular-nums sm:w-28 sm:px-0 ${
+                  remaining <= 10 ? 'text-red-400/90' : 'text-ink-muted'
+                }`}
+              >
+                <span>
+                  {Math.floor(remaining / 60)}:
+                  {String(remaining % 60).padStart(2, '0')}
                 </span>
-              )}
-              <span className="glass-chip rounded-full px-4 py-1.5 text-right">
+                <span
+                  className={remaining <= 10 ? undefined : 'text-accent-soft'}
+                >
+                  {maxNow}
+                </span>
+              </span>
+              <span className="glass-chip flex items-center justify-center rounded-full px-3 sm:w-28 sm:px-0">
                 <span className="font-display text-lg font-medium text-accent-soft">
                   {total}
                 </span>
@@ -205,11 +197,14 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
               <button
                 onClick={onClose}
                 aria-label={g.close}
-                className="glass-chip pointer-events-auto grid h-9 w-9 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink"
+                className="glass-chip pointer-events-auto ms-auto grid w-[42px] shrink-0 cursor-pointer place-items-center rounded-full text-ink-muted hover:text-ink sm:w-[50px]"
               >
                 <IconClose className="h-4 w-4" />
               </button>
             </div>
+            <span className="glass-chip rounded-full px-4 py-2 text-[11px] text-ink-muted sm:px-6">
+              {item.place}
+            </span>
           </div>
 
           <div className="pointer-events-none absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 p-5">
