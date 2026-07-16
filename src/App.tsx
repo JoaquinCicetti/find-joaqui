@@ -1,11 +1,12 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { Header } from './components/Header'
 import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
 import { Starfield } from './components/Starfield'
-import { RingField } from './components/RingField'
-import { media, spots, type MediaItem, type Spot } from './data/panoramas'
+import { RingField, RingLoader } from './components/RingField'
+import { type MediaItem, type Spot } from './data/panoramas'
+import { loadMedia, useMedia } from './data/mediaStore'
 import { playableItems, playableStats } from './game/joaqui'
 import { onIdle, prefetchImage } from './lib/prefetch'
 import { LangProvider, useLang } from './i18n'
@@ -25,10 +26,11 @@ const CalibrationSuite = lazy(() =>
   })),
 )
 
-// admin mode to place Joaqui in every shot (see CalibrationSuite)
+// admin mode: upload shots + place Joaqui (see CalibrationSuite)
 const isCalibrate =
   typeof window !== 'undefined' &&
-  new URLSearchParams(window.location.search).has('calibrate')
+  (new URLSearchParams(window.location.search).has('calibrate') ||
+    new URLSearchParams(window.location.search).has('admin'))
 
 const supportsVT =
   typeof document !== 'undefined' && 'startViewTransition' in document
@@ -77,7 +79,11 @@ function writeUrl(sel: Selection, push: boolean) {
 
 /** Resolve the current URL to the state it represents (used on load and on
  *  browser back/forward). A ?view wins over ?spot. */
-function resolveSelection(sel: Selection): {
+function resolveSelection(
+  sel: Selection,
+  media: MediaItem[],
+  spots: Spot[],
+): {
   selected: Spot | null
   active: MediaItem | null
   viewing: MediaItem | null
@@ -146,15 +152,11 @@ function GameFooter({
 }
 
 function Page() {
-  const [selected, setSelected] = useState<Spot | null>(
-    () => resolveSelection(readUrlSelection()).selected,
-  )
-  const [active, setActive] = useState<MediaItem | null>(
-    () => resolveSelection(readUrlSelection()).active,
-  )
-  const [viewing, setViewing] = useState<MediaItem | null>(
-    () => resolveSelection(readUrlSelection()).viewing,
-  )
+  const { t } = useLang()
+  const { media, spots, status } = useMedia()
+  const [selected, setSelected] = useState<Spot | null>(null)
+  const [active, setActive] = useState<MediaItem | null>(null)
+  const [viewing, setViewing] = useState<MediaItem | null>(null)
   const [gameOpen, setGameOpen] = useState(false)
   const playable = playableItems().length
   // any surface shown above the globe hides the footer so they don't collide
@@ -163,6 +165,18 @@ function Page() {
   useEffect(() => {
     document.documentElement.classList.toggle('vt', supportsVT)
   }, [])
+
+  // Hydrate a deep link (?spot / ?view) once the library has loaded — the
+  // initial state is empty because media arrives asynchronously now.
+  const hydrated = useRef(false)
+  useEffect(() => {
+    if (status !== 'ready' || hydrated.current) return
+    hydrated.current = true
+    const next = resolveSelection(readUrlSelection(), media, spots)
+    setSelected(next.selected)
+    setActive(next.active)
+    setViewing(next.viewing)
+  }, [status, media, spots])
 
   // Warm the heavy viewer/game chunks (Photo Sphere Viewer + three.js) once the
   // page is idle, so the first Play / open-viewer feels instant instead of
@@ -187,14 +201,14 @@ function Page() {
   // keep state in sync with the URL on browser back/forward (and manual edits)
   useEffect(() => {
     const onPop = () => {
-      const next = resolveSelection(readUrlSelection())
+      const next = resolveSelection(readUrlSelection(), media, spots)
       setViewing(next.viewing)
       setSelected(next.selected)
       setActive(next.active)
     }
     window.addEventListener('popstate', onPop)
     return () => window.removeEventListener('popstate', onPop)
-  }, [])
+  }, [media, spots])
 
   const closeGame = () => {
     localStorage.setItem('joaqui-intro-seen', '1')
@@ -256,6 +270,38 @@ function Page() {
     writeUrl(spot ? { spot: spot.id } : {}, false)
   }
 
+  // First paint while the library loads (returning visitors get the cache, so
+  // this only shows on a cold first visit).
+  if (status === 'loading' && media.length === 0) {
+    return (
+      <div className="relative h-full overflow-hidden">
+        <Starfield />
+        <RingField />
+        <div className="absolute inset-0 grid place-items-center">
+          <RingLoader />
+        </div>
+      </div>
+    )
+  }
+
+  // Hard failure with nothing cached to fall back on.
+  if (status === 'error' && media.length === 0) {
+    return (
+      <div className="relative h-full overflow-hidden">
+        <Starfield />
+        <RingField />
+        <div className="absolute inset-0 grid place-items-center p-6">
+          <div className="glass anim-scale flex max-w-sm flex-col items-center gap-4 rounded-3xl p-8 text-center">
+            <p className="text-sm text-ink-muted">{t.loadError}</p>
+            <button onClick={() => loadMedia()} className="btn-primary px-6">
+              {t.retry}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="relative h-full overflow-hidden">
       <Starfield />
@@ -306,6 +352,10 @@ function Page() {
 }
 
 export default function App() {
+  // load the runtime library once, for both the normal and calibrate branches
+  useEffect(() => {
+    loadMedia()
+  }, [])
   return (
     <LangProvider>
       {isCalibrate ? (

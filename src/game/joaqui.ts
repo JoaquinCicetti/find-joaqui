@@ -1,5 +1,5 @@
-import committedRaw from '../data/joaqui-locations.json'
-import { media, type MediaItem } from '../data/panoramas'
+import { getMedia, getServerLocations } from '../data/mediaStore'
+import type { MediaItem } from '../data/panoramas'
 
 /**
  * Where Joaqui hides inside one shot.
@@ -16,9 +16,6 @@ export function isSphereLoc(
   return 'yaw' in loc
 }
 
-/** Locations shipped with the build (exported from the calibration suite). */
-export const committed = committedRaw as Record<string, JoaquiLocation>
-
 const DRAFT_KEY = 'joaqui-locations-draft'
 
 /** Calibration drafts live in localStorage until they're committed to the JSON. */
@@ -34,15 +31,15 @@ export function saveDrafts(drafts: Record<string, JoaquiLocation>): void {
   localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts))
 }
 
-/** Committed locations with any local drafts layered on top. */
+/** Server-committed locations with any local calibration drafts layered on top. */
 export function allLocations(): Record<string, JoaquiLocation> {
-  return { ...committed, ...loadDrafts() }
+  return { ...getServerLocations(), ...loadDrafts() }
 }
 
 /** Only shots where Joaqui has actually been placed are playable. */
 export function playableItems(): MediaItem[] {
   const locs = allLocations()
-  return media.filter((m) => locs[m.id] != null)
+  return getMedia().filter((m) => locs[m.id] != null)
 }
 
 /** Counts for the pitch banner — the set Joaqui is *actually* hidden in,

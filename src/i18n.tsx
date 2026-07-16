@@ -59,6 +59,8 @@ interface Dict {
   view360: string
   viewPhotoAria: string
   footer: string
+  loadError: string
+  retry: string
   g: GameDict
 }
 
@@ -83,6 +85,8 @@ const dictionaries: Record<Lang, Dict> = {
     view360: 'Vista 360°',
     viewPhotoAria: 'Fotografía',
     footer: '© 2026 Joaquín Cicetti',
+    loadError: 'No pude cargar las fotos. Revisá tu conexión.',
+    retry: 'Reintentar',
     g: {
       cta: 'Jugá a encontrarme',
       best: (n) => `Récord: ${n}`,
@@ -135,6 +139,8 @@ const dictionaries: Record<Lang, Dict> = {
     view360: '360° view',
     viewPhotoAria: 'Photograph',
     footer: '© 2026 Joaquín Cicetti',
+    loadError: "Couldn't load the photos. Check your connection.",
+    retry: 'Retry',
     g: {
       cta: 'Play: find me',
       best: (n) => `Best: ${n}`,

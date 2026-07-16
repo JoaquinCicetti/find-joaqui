@@ -1,5 +1,3 @@
-import { rawPanos, rawPhotos, type RawMedia } from './manifest'
-
 export type MediaKind = '360' | 'photo'
 
 export interface MediaItem {
@@ -18,9 +16,26 @@ export interface MediaItem {
   micro: string
 }
 
-/** Prefix a public/ asset with the deploy base path (GH Pages serves under /<repo>/). */
+/** One row from the runtime store (/api/media): raw coords + absolute Blob URLs. */
+export interface MediaRecord {
+  id: string
+  kind: MediaKind
+  file: string
+  blobUrl: string
+  thumbUrl: string
+  microUrl: string
+  lat: number
+  lng: number
+  /** YYYY-MM */
+  date: string
+}
+
+/** Blob URLs are already absolute — pass them through. Relative paths (dev
+ *  placeholders) still get the deploy base path. */
 export const asset = (path: string): string =>
-  `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
+  /^(https?:)?\/\//.test(path)
+    ? path
+    : `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
 
 /**
  * Named places, matched to each image's GPS point by distance.
@@ -98,30 +113,26 @@ function locate(lat: number, lng: number) {
   return best
 }
 
-function toItems(raw: RawMedia[], kind: MediaKind, dir: string): MediaItem[] {
-  return raw
+/** Build display items from runtime records — place-matches each by GPS. */
+export function buildItems(records: MediaRecord[]): MediaItem[] {
+  return records
     .filter((r) => r.lat != null && r.lng != null)
     .map((r) => {
-      const found = locate(r.lat!, r.lng!)
+      const found = locate(r.lat, r.lng)
       return {
-        id: r.file.replace(/\.[^.]+$/, ''),
-        kind,
-        title: found?.place ?? `${r.lat!.toFixed(2)}, ${r.lng!.toFixed(2)}`,
+        id: r.id,
+        kind: r.kind,
+        title: found?.place ?? `${r.lat.toFixed(2)}, ${r.lng.toFixed(2)}`,
         place: found?.place ?? 'Unknown place',
         country: found?.country ?? '',
-        coords: [r.lng!, r.lat!] as [number, number],
+        coords: [r.lng, r.lat] as [number, number],
         date: r.date,
-        src: `${dir}/${r.file}`,
-        thumb: `${dir}/thumbs/${r.file}`,
-        micro: `${dir}/thumbs/micro/${r.file}`,
+        src: r.blobUrl,
+        thumb: r.thumbUrl,
+        micro: r.microUrl,
       }
     })
 }
-
-export const media: MediaItem[] = [
-  ...toItems(rawPanos, '360', 'panos'),
-  ...toItems(rawPhotos, 'photo', 'photos'),
-]
 
 /** One marker on the globe = one spot; several shots of a place stack into it. */
 export interface Spot {
@@ -134,7 +145,8 @@ export interface Spot {
   items: MediaItem[]
 }
 
-export const spots: Spot[] = (() => {
+/** Group items into globe markers: one marker per place, shots stacked. */
+export function buildSpots(media: MediaItem[]): Spot[] {
   const groups = new Map<string, MediaItem[]>()
   for (const m of media) {
     // unmatched places group by rounded coords so distinct unknowns stay apart
@@ -158,12 +170,7 @@ export const spots: Spot[] = (() => {
       items,
     }
   })
-})()
-
-export const placeCount = new Set(media.map((m) => m.place)).size
-export const countryCount = new Set(
-  media.map((m) => m.country).filter(Boolean),
-).size
+}
 
 export function formatCoords([lng, lat]: [number, number]): string {
   const ns = lat >= 0 ? 'N' : 'S'

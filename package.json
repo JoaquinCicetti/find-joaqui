@@ -17,6 +17,8 @@
     "@photo-sphere-viewer/gyroscope-plugin": "^5.14.3",
     "@photo-sphere-viewer/markers-plugin": "^5.14.3",
     "@upstash/redis": "^1.38.0",
+    "@vercel/blob": "^2.6.1",
+    "exifr": "^7.1.3",
     "maplibre-gl": "^5.24.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"

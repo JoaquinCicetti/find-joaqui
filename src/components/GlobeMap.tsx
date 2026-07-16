@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import { asset, spots, type MediaItem, type Spot } from '../data/panoramas'
+import { asset, type MediaItem, type Spot } from '../data/panoramas'
+import { useMedia } from '../data/mediaStore'
 import { countryName, formatDate, useLang, type Lang } from '../i18n'
 import { LocationCard } from './LocationCard'
 
@@ -67,6 +68,7 @@ export function GlobeMap({
   onView,
 }: GlobeMapProps) {
   const { t, lang } = useLang()
+  const { spots } = useMedia()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
   const markersRef = useRef<Map<string, HTMLElement>>(new Map())
@@ -276,7 +278,9 @@ export function GlobeMap({
       map.remove()
       mapRef.current = null
     }
-  }, [])
+    // spots is stable for end users; on an admin refetch the globe rebuilds
+    // with the new markers.
+  }, [spots])
 
   // localized screen-reader labels for the markers
   useEffect(() => {
@@ -293,7 +297,7 @@ export function GlobeMap({
           }`,
         )
     }
-  }, [t, lang])
+  }, [t, lang, spots])
 
   useEffect(() => {
     for (const [id, el] of markersRef.current) {

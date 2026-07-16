@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { media } from '../data/panoramas'
+import { loadMedia, useMedia } from '../data/mediaStore'
 import {
   allLocations,
   isSphereLoc,
@@ -7,51 +7,139 @@ import {
   saveDrafts,
   type JoaquiLocation,
 } from '../game/joaqui'
+import {
+  clearAdminKey,
+  deleteMedia,
+  getAdminKey,
+  login,
+  saveLocation,
+} from '../lib/adminApi'
+import { AdminUpload } from './AdminUpload'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
 
 /**
- * Admin tool (open with ?calibrate): step through every shot, click where
- * Joaqui hides, and export the result as joaqui-locations.json.
- * Placements are drafts in localStorage until the JSON is committed.
+ * Admin tool (open with ?admin or ?calibrate): log in, upload shots, and click
+ * where Joaqui hides. Placements save straight to the server (Redis) and also
+ * keep a localStorage draft as an offline backup.
  */
 export function CalibrationSuite() {
+  const [authed, setAuthed] = useState(() => Boolean(getAdminKey()))
+  if (!authed) return <AdminLogin onDone={() => setAuthed(true)} />
+  return <AdminWorkspace onLogout={() => setAuthed(false)} />
+}
+
+function AdminLogin({ onDone }: { onDone: () => void }) {
+  const [pw, setPw] = useState('')
+  const [err, setErr] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true)
+    setErr(false)
+    const ok = await login(pw)
+    setBusy(false)
+    if (ok) onDone()
+    else setErr(true)
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-paper p-4">
+      <form
+        onSubmit={submit}
+        className="glass anim-scale w-[min(100%,22rem)] rounded-3xl p-7 text-center"
+      >
+        <h2 className="font-display text-2xl font-medium">Admin</h2>
+        <input
+          type="password"
+          value={pw}
+          onChange={(e) => setPw(e.target.value)}
+          autoFocus
+          placeholder="Contraseña"
+          className="glass-chip mt-4 w-full rounded-full px-4 py-2.5 text-sm outline-none focus:border-accent-soft"
+        />
+        {err && <p className="mt-2 text-xs text-red-400">Contraseña incorrecta</p>}
+        <button
+          type="submit"
+          disabled={busy || !pw}
+          className="btn-primary mt-4 w-full"
+        >
+          {busy ? '…' : 'Entrar'}
+        </button>
+      </form>
+    </div>
+  )
+}
+
+function AdminWorkspace({ onLogout }: { onLogout: () => void }) {
+  const { media, status } = useMedia()
   const [i, setI] = useState(0)
   const [locs, setLocs] = useState<Record<string, JoaquiLocation>>(() =>
     allLocations(),
   )
+  const [uploadOpen, setUploadOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'error'>('idle')
 
-  const item = media[i]
-  const loc = locs[item.id]
+  // re-sync local map when the server library (re)loads
+  useEffect(() => {
+    setLocs(allLocations())
+  }, [status, media])
+
+  const safeI = media.length ? Math.min(i, media.length - 1) : 0
+  const item = media[safeI]
+  const loc = item ? locs[item.id] : undefined
   const placedCount = useMemo(
     () => media.filter((m) => locs[m.id] != null).length,
-    [locs],
+    [locs, media],
   )
 
-  const place = (l: JoaquiLocation) => {
+  const place = async (l: JoaquiLocation) => {
+    if (!item) return
+    // draft first so the point is never lost, then persist to the server
     saveDrafts({ ...loadDrafts(), [item.id]: l })
     setLocs(allLocations())
+    setSaveState('saving')
+    try {
+      await saveLocation(item.id, l)
+      setSaveState('idle')
+    } catch {
+      setSaveState('error')
+    }
   }
 
   const reset = () => {
+    if (!item) return
     const drafts = loadDrafts()
     delete drafts[item.id]
     saveDrafts(drafts)
     setLocs(allLocations())
   }
 
-  const prev = () => setI((n) => (n - 1 + media.length) % media.length)
-  const next = () => setI((n) => (n + 1) % media.length)
+  const removeShot = async () => {
+    if (!item) return
+    if (!confirm(`¿Borrar "${item.place}"? Esto elimina la foto para todos.`))
+      return
+    await deleteMedia(item.id)
+    await loadMedia(true)
+    setI((n) => Math.max(0, n - 1))
+  }
+
+  const prev = () =>
+    setI((n) => (media.length ? (n - 1 + media.length) % media.length : 0))
+  const next = () => setI((n) => (media.length ? (n + 1) % media.length : 0))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (uploadOpen) return
       if (e.target instanceof HTMLSelectElement) return
+      if (e.target instanceof HTMLInputElement) return
       if (e.key === 'ArrowLeft') prev()
       if (e.key === 'ArrowRight') next()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [uploadOpen, media.length])
 
   const exportJson = () => {
     const sorted = Object.fromEntries(
@@ -59,20 +147,15 @@ export function CalibrationSuite() {
     )
     return JSON.stringify(sorted, null, 2) + '\n'
   }
-
   const copy = async () => {
     await navigator.clipboard.writeText(exportJson())
     setCopied(true)
     setTimeout(() => setCopied(false), 1600)
   }
 
-  const download = () => {
-    const blob = new Blob([exportJson()], { type: 'application/json' })
-    const a = document.createElement('a')
-    a.href = URL.createObjectURL(blob)
-    a.download = 'joaqui-locations.json'
-    a.click()
-    URL.revokeObjectURL(a.href)
+  const logout = () => {
+    clearAdminKey()
+    onLogout()
   }
 
   const markers: StageMarker[] = loc
@@ -89,17 +172,27 @@ export function CalibrationSuite() {
     <div className="fixed inset-0 z-50 flex flex-col bg-paper">
       <header className="glass z-10 m-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-3">
         <p className="font-mono text-[11px] tracking-widest text-accent-soft uppercase">
-          Calibración · Buscando al Joaqui
+          Admin · Buscando al Joaqui
         </p>
         <span className="glass-chip rounded-full px-3 py-1 font-mono text-xs">
           {placedCount}/{media.length} ubicadas
         </span>
+        <button
+          onClick={() => setUploadOpen(true)}
+          className="btn-accent cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold"
+        >
+          + Subir fotos
+        </button>
         <div className="ms-auto flex items-center gap-2">
-          <button onClick={prev} className="glass-chip cursor-pointer rounded-full px-3 py-1.5 text-sm hover:text-accent-soft" aria-label="Anterior">
+          <button
+            onClick={prev}
+            className="glass-chip cursor-pointer rounded-full px-3 py-1.5 text-sm hover:text-accent-soft"
+            aria-label="Anterior"
+          >
             ←
           </button>
           <select
-            value={i}
+            value={safeI}
             onChange={(e) => setI(Number(e.target.value))}
             className="glass-chip max-w-56 cursor-pointer rounded-full px-3 py-1.5 text-xs"
             aria-label="Elegir foto"
@@ -111,42 +204,86 @@ export function CalibrationSuite() {
               </option>
             ))}
           </select>
-          <button onClick={next} className="glass-chip cursor-pointer rounded-full px-3 py-1.5 text-sm hover:text-accent-soft" aria-label="Siguiente">
+          <button
+            onClick={next}
+            className="glass-chip cursor-pointer rounded-full px-3 py-1.5 text-sm hover:text-accent-soft"
+            aria-label="Siguiente"
+          >
             →
+          </button>
+          <button
+            onClick={logout}
+            className="glass-chip cursor-pointer rounded-full px-3 py-1.5 text-xs text-ink-muted hover:text-ink"
+          >
+            Salir
           </button>
         </div>
       </header>
 
       <main className="relative mx-3 flex-1 overflow-hidden rounded-2xl border border-white/10">
-        {item.kind === '360' ? (
-          <SphereStage item={item} markers={markers} onPick={place} />
+        {item ? (
+          item.kind === '360' ? (
+            <SphereStage item={item} markers={markers} onPick={place} />
+          ) : (
+            <PhotoStage item={item} markers={markers} onPick={place} />
+          )
         ) : (
-          <PhotoStage item={item} markers={markers} onPick={place} />
+          <div className="grid h-full place-items-center text-sm text-ink-muted">
+            {status === 'loading'
+              ? 'Cargando…'
+              : 'No hay fotos todavía. Subí algunas para empezar.'}
+          </div>
         )}
       </main>
 
       <footer className="glass z-10 m-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-3">
         <div className="min-w-0">
           <p className="truncate text-sm font-medium">
-            {i + 1}/{media.length} · {item.place}
-            <span className="text-ink-muted"> · {item.kind} · {item.date}</span>
+            {item ? `${safeI + 1}/${media.length} · ${item.place}` : '—'}
+            {item && (
+              <span className="text-ink-muted">
+                {' '}
+                · {item.kind} · {item.date}
+              </span>
+            )}
           </p>
-          <p className="font-mono text-xs text-ink-muted">{coordLabel}</p>
+          <p className="font-mono text-xs text-ink-muted">
+            {item ? coordLabel : ''}
+            {saveState === 'saving' && (
+              <span className="text-accent-soft"> · guardando…</span>
+            )}
+            {saveState === 'error' && (
+              <span className="text-red-400"> · error al guardar</span>
+            )}
+          </p>
         </div>
         <div className="ms-auto flex items-center gap-2">
-          {loc != null && (
-            <button onClick={reset} className="glass-chip cursor-pointer rounded-full px-4 py-1.5 text-xs text-ink-muted hover:text-ink">
+          {item && loc != null && (
+            <button
+              onClick={reset}
+              className="glass-chip cursor-pointer rounded-full px-4 py-1.5 text-xs text-ink-muted hover:text-ink"
+            >
               Quitar punto
             </button>
           )}
-          <button onClick={copy} className="glass-chip cursor-pointer rounded-full px-4 py-1.5 text-xs hover:text-accent-soft">
+          {item && (
+            <button
+              onClick={removeShot}
+              className="glass-chip cursor-pointer rounded-full px-4 py-1.5 text-xs text-red-400/90 hover:text-red-400"
+            >
+              Borrar foto
+            </button>
+          )}
+          <button
+            onClick={copy}
+            className="glass-chip cursor-pointer rounded-full px-4 py-1.5 text-xs hover:text-accent-soft"
+          >
             {copied ? 'Copiado ✓' : 'Copiar JSON'}
-          </button>
-          <button onClick={download} className="btn-accent cursor-pointer rounded-full px-4 py-1.5 text-xs font-semibold">
-            Descargar JSON
           </button>
         </div>
       </footer>
+
+      {uploadOpen && <AdminUpload onClose={() => setUploadOpen(false)} />}
     </div>
   )
 }
