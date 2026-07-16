@@ -62,6 +62,7 @@ export function playableStats(): {
 
 export const ROUNDS = 8
 export const MAX_ROUND_SCORE = 1000
+export const ROUND_SECONDS = 45
 
 /** Fisher–Yates pick of up to ROUNDS playable shots. */
 export function pickRounds(): MediaItem[] {

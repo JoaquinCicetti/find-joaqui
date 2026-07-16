@@ -6,6 +6,7 @@ import {
   isSphereLoc,
   pickRounds,
   playableItems,
+  ROUND_SECONDS,
   scoreGuess,
   type GuessResult,
   type JoaquiLocation,
@@ -30,9 +31,16 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const [guess, setGuess] = useState<JoaquiLocation | null>(null)
   const [scores, setScores] = useState<number[]>([])
   const [result, setResult] = useState<GuessResult | null>(null)
+  const [deadline, setDeadline] = useState<number | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+  const [timedOut, setTimedOut] = useState(false)
 
   const item = rounds[i]
   const total = scores.reduce((s, n) => s + n, 0)
+  const remaining =
+    deadline === null
+      ? ROUND_SECONDS
+      : Math.max(0, Math.ceil((deadline - now) / 1000))
 
   const start = () => {
     const picked = pickRounds()
@@ -43,6 +51,9 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     setScores([])
     setGuess(null)
     setResult(null)
+    setTimedOut(false)
+    setNow(Date.now())
+    setDeadline(Date.now() + ROUND_SECONDS * 1000)
     setPhase('guess')
   }
 
@@ -60,11 +71,34 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
       setI(i + 1)
       setGuess(null)
       setResult(null)
+      setTimedOut(false)
+      setNow(Date.now())
+      setDeadline(Date.now() + ROUND_SECONDS * 1000)
       setPhase('guess')
     } else {
       setPhase('done')
     }
   }
+
+  // tick the countdown while the player is guessing
+  useEffect(() => {
+    if (phase !== 'guess') return
+    const id = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(id)
+  }, [phase, i])
+
+  // hard limit: auto-confirm the placed guess, or score 0 without one
+  useEffect(() => {
+    if (phase !== 'guess' || deadline === null || remaining > 0 || !item) return
+    const truth = locs[item.id]
+    const r: GuessResult = guess
+      ? scoreGuess(guess, truth)
+      : { points: 0, kind: 'photo', pct: 100 }
+    if (!guess) setTimedOut(true)
+    setScores((s) => [...s, r.points])
+    setResult(r)
+    setPhase('reveal')
+  }, [phase, deadline, remaining, item, guess, locs])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -150,6 +184,16 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              {phase === 'guess' && (
+                <span
+                  className={`glass-chip rounded-full px-3.5 py-1.5 font-mono text-sm tabular-nums ${
+                    remaining <= 10 ? 'text-red-400/90' : 'text-ink-muted'
+                  }`}
+                >
+                  {Math.floor(remaining / 60)}:
+                  {String(remaining % 60).padStart(2, '0')}
+                </span>
+              )}
               <span className="glass-chip rounded-full px-4 py-1.5 text-right">
                 <span className="font-display text-lg font-medium text-accent-soft">
                   {total}
@@ -190,11 +234,13 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                   {g.points(result.points)}
                 </p>
                 <p className="text-sm text-ink-muted">
-                  {result.points === 1000
-                    ? g.found
-                    : result.kind === '360'
-                      ? g.away360(result.deg.toFixed(0))
-                      : g.awayPhoto(result.pct.toFixed(0))}
+                  {timedOut
+                    ? g.timeUp
+                    : result.points === 1000
+                      ? g.found
+                      : result.kind === '360'
+                        ? g.away360(result.deg.toFixed(0))
+                        : g.awayPhoto(result.pct.toFixed(0))}
                 </p>
                 <p className="font-mono text-xs text-ink-muted">
                   Total: <span className="text-accent-soft">{total}</span>
