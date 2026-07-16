@@ -35,7 +35,6 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<GuessResult | null>(null)
   const [deadline, setDeadline] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
-  const [timedOut, setTimedOut] = useState(false)
 
   const item = rounds[i]
   const total = scores.reduce((s, n) => s + n, 0)
@@ -55,7 +54,6 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     setScores([])
     setGuess(null)
     setResult(null)
-    setTimedOut(false)
     setNow(Date.now())
     setDeadline(Date.now() + ROUND_SECONDS * 1000)
     setPhase('guess')
@@ -76,7 +74,6 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
       setI(i + 1)
       setGuess(null)
       setResult(null)
-      setTimedOut(false)
       setNow(Date.now())
       setDeadline(Date.now() + ROUND_SECONDS * 1000)
       setPhase('guess')
@@ -85,26 +82,14 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     }
   }
 
-  // tick the countdown while the player is guessing
+  // tick the countdown while the player is guessing; once the clock bottoms
+  // out the factor is floored, so there's no cutoff — take all the time you
+  // want, it just won't be worth more than the floor
   useEffect(() => {
     if (phase !== 'guess') return
     const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
   }, [phase, i])
-
-  // hard limit: auto-confirm the placed guess, or score 0 without one
-  useEffect(() => {
-    if (phase !== 'guess' || deadline === null || remaining > 0 || !item) return
-    const truth = locs[item.id]
-    const raw: GuessResult = guess
-      ? scoreGuess(guess, truth)
-      : { points: 0, kind: 'photo', pct: 100 }
-    const r = { ...raw, points: Math.round(raw.points * timeFactor(0)) }
-    if (!guess) setTimedOut(true)
-    setScores((s) => [...s, r.points])
-    setResult(r)
-    setPhase('reveal')
-  }, [phase, deadline, remaining, item, guess, locs])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -249,17 +234,15 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                   {g.points(result.points)}
                 </p>
                 <p className="text-sm text-ink-muted">
-                  {timedOut
-                    ? g.timeUp
-                    : (
-                          result.kind === '360'
-                            ? result.deg <= 4
-                            : result.pct <= 2
-                        )
-                      ? g.found
-                      : result.kind === '360'
-                        ? g.away360(result.deg.toFixed(0))
-                        : g.awayPhoto(result.pct.toFixed(0))}
+                  {(
+                    result.kind === '360'
+                      ? result.deg <= 4
+                      : result.pct <= 2
+                  )
+                    ? g.found
+                    : result.kind === '360'
+                      ? g.away360(result.deg.toFixed(0))
+                      : g.awayPhoto(result.pct.toFixed(0))}
                 </p>
                 <p className="font-mono text-xs text-ink-muted">
                   Total: <span className="text-accent-soft">{total}</span>
