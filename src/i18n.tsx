@@ -23,6 +23,7 @@ interface GameDict {
   adjustHint: string
   confirm: string
   found: string
+  timeUp: string
   away360: (deg: string) => string
   awayPhoto: (pct: string) => string
   points: (n: number) => string
@@ -99,6 +100,7 @@ const dictionaries: Record<Lang, Dict> = {
       adjustHint: 'Afiná el punto y confirmá',
       confirm: 'Confirmar',
       found: '¡Me encontraste!',
+      timeUp: '¡Se acabó el tiempo!',
       away360: (deg) => `Le pifiaste por ${deg}°`,
       awayPhoto: (pct) => `Le pifiaste por un ${pct}% del cuadro`,
       points: (n) => `+${n} puntos`,
@@ -151,6 +153,7 @@ const dictionaries: Record<Lang, Dict> = {
       adjustHint: 'Fine-tune the spot, then confirm',
       confirm: 'Lock it in',
       found: 'You found me!',
+      timeUp: "Time's up!",
       away360: (deg) => `You missed me by ${deg}°`,
       awayPhoto: (pct) => `You missed me by ${pct}% of the frame`,
       points: (n) => `+${n} points`,
