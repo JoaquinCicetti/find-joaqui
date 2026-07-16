@@ -21,11 +21,19 @@ body,
   height: 100%;
 }
 
+/* Kill the rubber-band / pull-to-refresh bounce — this is a fixed full-screen
+   app, nothing at the document level should scroll. */
+html,
+body {
+  overscroll-behavior: none;
+}
+
 body {
   background: var(--color-paper);
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  overflow: hidden;
 }
 
 @layer components {
@@ -254,10 +262,8 @@ body {
 }
 
 /* ---- Photo Sphere Viewer chrome ---- */
-/* Safe-area insets so the buttons clear curved corners / the home indicator.
-   PSV sizes the bar content-box (40px row) anchored at bottom:-40px when
-   hidden, so the padding must join the hidden offset or a sliver stays
-   visible. width:auto + right:0 keeps the padded box inside the viewer. */
+/* width:auto + right:0 keep the padded bar inside the rounded viewer; the
+   40px content-box row is anchored at bottom:-40px when hidden. */
 .psv-container .psv-navbar {
   background: rgba(10, 13, 18, 0.6);
   backdrop-filter: blur(8px);
@@ -265,10 +271,20 @@ body {
   right: 0;
   padding-left: max(0.75rem, env(safe-area-inset-left));
   padding-right: max(0.75rem, env(safe-area-inset-right));
+  bottom: -40px;
+}
+.psv-container .psv-navbar--open {
+  bottom: 0;
+}
+/* The home-indicator inset only makes sense once the viewer fills the screen —
+   inside a floating card it's just an ugly gap under the buttons. */
+.psv-container:fullscreen .psv-navbar,
+.psv-container.psv-fullscreen-emulation .psv-navbar {
   padding-bottom: env(safe-area-inset-bottom);
   bottom: calc(-40px - env(safe-area-inset-bottom));
 }
-.psv-container .psv-navbar--open {
+.psv-container:fullscreen .psv-navbar--open,
+.psv-container.psv-fullscreen-emulation .psv-navbar--open {
   bottom: 0;
 }
 /* our RingLoader replaces PSV's progress spinner */
