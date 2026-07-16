@@ -188,16 +188,6 @@ function Page() {
     })
   }, [playable])
 
-  // alert first-time visitors about the game (once, and only if it has content
-  // and they didn't arrive on a deep link to a place/shot)
-  useEffect(() => {
-    if (!playable || localStorage.getItem('joaqui-intro-seen')) return
-    const s = readUrlSelection()
-    if (s.spot || s.view) return
-    const id = setTimeout(() => setGameOpen(true), 2200)
-    return () => clearTimeout(id)
-  }, [playable])
-
   // keep state in sync with the URL on browser back/forward (and manual edits)
   useEffect(() => {
     const onPop = () => {
@@ -210,10 +200,7 @@ function Page() {
     return () => window.removeEventListener('popstate', onPop)
   }, [media, spots])
 
-  const closeGame = () => {
-    localStorage.setItem('joaqui-intro-seen', '1')
-    setGameOpen(false)
-  }
+  const closeGame = () => setGameOpen(false)
 
   const selectSpot = (spot: Spot | null) => {
     setSelected(spot)
