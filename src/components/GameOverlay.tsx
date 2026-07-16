@@ -4,10 +4,12 @@ import type { MediaItem } from '../data/panoramas'
 import {
   allLocations,
   isSphereLoc,
+  MAX_ROUND_SCORE,
   pickRounds,
   playableItems,
   ROUND_SECONDS,
   scoreGuess,
+  timeFactor,
   type GuessResult,
   type JoaquiLocation,
 } from '../game/joaqui'
@@ -41,6 +43,8 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     deadline === null
       ? ROUND_SECONDS
       : Math.max(0, Math.ceil((deadline - now) / 1000))
+  // what a perfect find is still worth right now — ticks down with the clock
+  const maxNow = Math.round(MAX_ROUND_SCORE * timeFactor(remaining))
 
   const start = () => {
     const picked = pickRounds()
@@ -60,7 +64,8 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const confirm = () => {
     if (!guess || !item) return
     const truth = locs[item.id]
-    const r = scoreGuess(guess, truth)
+    const raw = scoreGuess(guess, truth)
+    const r = { ...raw, points: Math.round(raw.points * timeFactor(remaining)) }
     setScores((s) => [...s, r.points])
     setResult(r)
     setPhase('reveal')
@@ -91,9 +96,10 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (phase !== 'guess' || deadline === null || remaining > 0 || !item) return
     const truth = locs[item.id]
-    const r: GuessResult = guess
+    const raw: GuessResult = guess
       ? scoreGuess(guess, truth)
       : { points: 0, kind: 'photo', pct: 100 }
+    const r = { ...raw, points: Math.round(raw.points * timeFactor(0)) }
     if (!guess) setTimedOut(true)
     setScores((s) => [...s, r.points])
     setResult(r)
@@ -186,12 +192,21 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2">
               {phase === 'guess' && (
                 <span
-                  className={`glass-chip rounded-full px-3.5 py-1.5 font-mono text-sm tabular-nums ${
+                  className={`glass-chip flex items-baseline gap-2 rounded-full px-3.5 py-1.5 font-mono text-sm tabular-nums ${
                     remaining <= 10 ? 'text-red-400/90' : 'text-ink-muted'
                   }`}
                 >
-                  {Math.floor(remaining / 60)}:
-                  {String(remaining % 60).padStart(2, '0')}
+                  <span>
+                    {Math.floor(remaining / 60)}:
+                    {String(remaining % 60).padStart(2, '0')}
+                  </span>
+                  <span
+                    className={
+                      remaining <= 10 ? undefined : 'text-accent-soft'
+                    }
+                  >
+                    {maxNow}
+                  </span>
                 </span>
               )}
               <span className="glass-chip rounded-full px-4 py-1.5 text-right">
@@ -236,7 +251,11 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
                 <p className="text-sm text-ink-muted">
                   {timedOut
                     ? g.timeUp
-                    : result.points === 1000
+                    : (
+                          result.kind === '360'
+                            ? result.deg <= 4
+                            : result.pct <= 2
+                        )
                       ? g.found
                       : result.kind === '360'
                         ? g.away360(result.deg.toFixed(0))
