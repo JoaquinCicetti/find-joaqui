@@ -11,6 +11,7 @@ import {
   type JoaquiLocation,
 } from '../game/joaqui'
 import { fetchTop, submitScore, type ScoreEntry } from '../game/api'
+import { prefetchImage } from '../lib/prefetch'
 import { useLang } from '../i18n'
 import { IconClose, IconSearch } from './icons'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
@@ -34,7 +35,10 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const total = scores.reduce((s, n) => s + n, 0)
 
   const start = () => {
-    setRounds(pickRounds())
+    const picked = pickRounds()
+    // warm the first shot (behind the RingLoader) and the one after it
+    picked.slice(0, 2).forEach((r) => prefetchImage(r.src))
+    setRounds(picked)
     setI(0)
     setScores([])
     setGuess(null)
@@ -69,6 +73,12 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
+
+  // keep the next shot warm so advancing rounds never waits on a download
+  useEffect(() => {
+    const next = rounds[i + 1]
+    if (next) prefetchImage(next.src)
+  }, [rounds, i])
 
   const markers: StageMarker[] = []
   if (guess) markers.push({ id: 'guess', kind: 'reticle', loc: guess })
@@ -217,9 +227,13 @@ function IntroPanel({
 }) {
   const { t } = useLang()
   const g = t.g
+  const [top, setTop] = useState<ScoreEntry[]>([])
+  useEffect(() => {
+    fetchTop().then(({ top }) => setTop(top))
+  }, [])
   return (
-    <div className="absolute inset-0 grid place-items-center p-4">
-      <div className="glass anim-scale w-[min(100%,26rem)] rounded-3xl p-7 text-center">
+    <div className="absolute inset-0 grid place-items-center overflow-y-auto p-4">
+      <div className="glass anim-scale my-auto w-[min(100%,26rem)] rounded-3xl p-7 text-center">
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-white/10 bg-white/[0.04] shadow-[0_0_44px_rgba(157,177,217,0.22)]">
           <IconSearch className="h-9 w-9 text-accent-soft/75" />
         </div>
@@ -239,6 +253,31 @@ function IntroPanel({
             </li>
           ))}
         </ol>
+        {top.length > 0 && (
+          <div className="mt-6 text-left">
+            <p className="text-xs tracking-widest text-ink-muted uppercase">
+              {g.board}
+            </p>
+            <ol className="mt-2 flex flex-col gap-1">
+              {top.slice(0, 5).map((e, n) => (
+                <li
+                  key={`${e.name}-${n}`}
+                  className="flex items-baseline justify-between gap-3 text-sm"
+                >
+                  <span className="truncate">
+                    <span className="font-mono text-xs text-ink-muted">
+                      {n + 1}.{' '}
+                    </span>
+                    {e.name}
+                  </span>
+                  <span className="font-mono text-xs text-accent-soft">
+                    {e.score}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
         <div className="mt-7 flex items-center justify-center gap-3">
           <button onClick={onClose} className="btn-ghost">
             {g.later}

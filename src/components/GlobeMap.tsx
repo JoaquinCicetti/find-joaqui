@@ -300,10 +300,14 @@ export function GlobeMap({
       el.classList.toggle('is-active', id === selected?.id)
     }
     if (selected && mapRef.current) {
+      // On phones the card covers the lower half, so lift the pin to ~28% from
+      // the top (negative-y offset = up) instead of dead-centering it.
+      const mobile = window.matchMedia('(max-width: 639px)').matches
       mapRef.current.flyTo({
         center: selected.coords,
         zoom: 6,
         duration: 2200,
+        offset: mobile ? [0, -window.innerHeight * 0.22] : [0, 0],
         essential: true,
       })
     }
