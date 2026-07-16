@@ -26,3 +26,4 @@ dist-ssr
 
 # full-size pano originals (kept out of git)
 .originals-backup/
+.env*
