@@ -13,7 +13,12 @@ import {
   type GuessResult,
   type JoaquiLocation,
 } from '../game/joaqui'
-import { fetchTop, submitScore, type ScoreEntry } from '../game/api'
+import {
+  fetchTop,
+  formatSeconds,
+  submitScore,
+  type ScoreEntry,
+} from '../game/api'
 import { prefetchImage } from '../lib/prefetch'
 import { useLang } from '../i18n'
 import { IconClose, IconSearch } from './icons'
@@ -35,6 +40,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const [result, setResult] = useState<GuessResult | null>(null)
   const [deadline, setDeadline] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
+  const [timeUsed, setTimeUsed] = useState(0)
 
   const item = rounds[i]
   const total = scores.reduce((s, n) => s + n, 0)
@@ -54,6 +60,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     setScores([])
     setGuess(null)
     setResult(null)
+    setTimeUsed(0)
     setNow(Date.now())
     setDeadline(Date.now() + ROUND_SECONDS * 1000)
     setPhase('guess')
@@ -64,6 +71,12 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
     const truth = locs[item.id]
     const raw = scoreGuess(guess, truth)
     const r = { ...raw, points: Math.round(raw.points * timeFactor(remaining)) }
+    if (deadline !== null) {
+      // true seconds spent on the round (can exceed the clock), kept sane
+      const start = deadline - ROUND_SECONDS * 1000
+      const elapsed = Math.round((Date.now() - start) / 1000)
+      setTimeUsed((t) => t + Math.min(600, Math.max(0, elapsed)))
+    }
     setScores((s) => [...s, r.points])
     setResult(r)
     setPhase('reveal')
@@ -254,6 +267,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
       {phase === 'done' && (
         <DonePanel
           total={total}
+          time={timeUsed}
           rounds={rounds}
           scores={scores}
           onAgain={start}
@@ -345,12 +359,14 @@ function IntroPanel({
 
 function DonePanel({
   total,
+  time,
   rounds,
   scores,
   onAgain,
   onClose,
 }: {
   total: number
+  time: number
   rounds: MediaItem[]
   scores: number[]
   onAgain: () => void
@@ -381,7 +397,7 @@ function DonePanel({
     if (!clean || state === 'saving') return
     localStorage.setItem('joaqui-name', clean)
     setState('saving')
-    const { top, remote } = await submitScore(clean, total)
+    const { top, remote } = await submitScore(clean, total, time)
     setTop(top)
     setState(remote ? 'saved' : 'local')
   }
@@ -397,6 +413,9 @@ function DonePanel({
         </p>
         <p className="font-display mt-1 text-center text-5xl font-medium text-accent-soft">
           {total}
+        </p>
+        <p className="mt-1 text-center font-mono text-xs text-ink-muted">
+          {formatSeconds(time)}
         </p>
 
         {/* per-round breakdown of where the points came from */}
@@ -481,6 +500,9 @@ function DonePanel({
           <button onClick={onClose} className="btn-ghost">
             {g.close}
           </button>
+          <a href="/scoring" className="btn-ghost">
+            {g.seeTop}
+          </a>
           <button onClick={onAgain} className="btn-primary px-7">
             {g.again}
           </button>
