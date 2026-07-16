@@ -14,8 +14,8 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
   },
   sky: {
-    'sky-color': '#0b1424',
-    'horizon-color': '#42599b',
+    'sky-color': '#090d14',
+    'horizon-color': '#2b3547',
     'fog-color': '#0e1116',
     'sky-horizon-blend': 0.7,
     'horizon-fog-blend': 0.6,
@@ -25,9 +25,9 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
       ['linear'],
       ['zoom'],
       0,
-      0.8,
+      0.55,
       4,
-      0.35,
+      0.25,
       7,
       0,
     ],
@@ -36,14 +36,14 @@ const MAP_STYLE: maplibregl.StyleSpecification = {
     {
       id: 'land',
       type: 'background',
-      paint: { 'background-color': '#1d242f' },
+      paint: { 'background-color': '#262c34' },
     },
     {
       id: 'water',
       type: 'fill',
       source: 'ofm',
       'source-layer': 'water',
-      paint: { 'fill-color': '#122e63' },
+      paint: { 'fill-color': '#161d28' },
     },
   ],
 }
@@ -106,10 +106,8 @@ export function GlobeMap({
       map.setProjection({ type: 'globe' })
     })
 
-    map.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      'bottom-right',
-    )
+    // No zoom chrome — the globe is spun and pinched/scrolled directly.
+    // Only the (required) tile attribution stays, tucked in the corner.
 
     for (const spot of spots) {
       const cover = spot.items[spot.items.length - 1]
@@ -339,10 +337,11 @@ export function GlobeMap({
       </div>
       {selected && active && (
         <LocationCard
+          key={selected.id}
           spot={selected}
           active={active}
           onChangeActive={onChangeActive}
-          onView={() => onView(active)}
+          onView={onView}
           onClose={() => onSelect(null)}
         />
       )}

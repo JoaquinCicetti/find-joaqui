@@ -67,6 +67,12 @@ const PLACES: {
   { place: 'Manchester', country: 'United Kingdom', at: [53.49, -2.23], radius: 15 },
   { place: 'Kotor', country: 'Montenegro', at: [42.46, 18.73], radius: 15 },
   { place: 'Tisno, Murter', country: 'Croatia', at: [43.8, 15.64], radius: 25 },
+  { place: 'Istanbul', country: 'Turkey', at: [41.025, 28.975], radius: 20 },
+  { place: 'Mar del Plata', country: 'Argentina', at: [-38.021, -57.54], radius: 15 },
+  { place: 'Piriápolis', country: 'Uruguay', at: [-34.894, -55.253], radius: 15 },
+  { place: 'Granada', country: 'Spain', at: [37.172, -3.591], radius: 12 },
+  { place: 'Zürich', country: 'Switzerland', at: [47.358, 8.536], radius: 12 },
+  { place: 'Porto', country: 'Portugal', at: [41.143, -8.605], radius: 12 },
 ]
 
 function haversineKm(a: [number, number], b: [number, number]): number {
