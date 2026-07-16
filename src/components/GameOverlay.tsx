@@ -209,7 +209,13 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
       )}
 
       {phase === 'done' && (
-        <DonePanel total={total} onAgain={start} onClose={onClose} />
+        <DonePanel
+          total={total}
+          rounds={rounds}
+          scores={scores}
+          onAgain={start}
+          onClose={onClose}
+        />
       )}
     </div>,
     document.body,
@@ -293,10 +299,14 @@ function IntroPanel({
 
 function DonePanel({
   total,
+  rounds,
+  scores,
   onAgain,
   onClose,
 }: {
   total: number
+  rounds: MediaItem[]
+  scores: number[]
   onAgain: () => void
   onClose: () => void
 }) {
@@ -342,6 +352,32 @@ function DonePanel({
         <p className="font-display mt-1 text-center text-5xl font-medium text-accent-soft">
           {total}
         </p>
+
+        {/* per-round breakdown of where the points came from */}
+        {scores.length > 0 && (
+          <ol className="mt-5 flex flex-col divide-y divide-white/5">
+            {rounds.map((r, n) => (
+              <li
+                key={r.id}
+                className="flex items-baseline justify-between gap-3 py-1.5 text-sm"
+              >
+                <span className="min-w-0 truncate">
+                  <span className="font-mono text-xs text-ink-muted">
+                    {n + 1}.{' '}
+                  </span>
+                  {r.place}
+                </span>
+                <span
+                  className={`shrink-0 font-mono text-xs ${
+                    scores[n] === 1000 ? 'text-accent-soft' : 'text-ink-muted'
+                  }`}
+                >
+                  {scores[n] ?? 0}
+                </span>
+              </li>
+            ))}
+          </ol>
+        )}
 
         {state === 'idle' || state === 'saving' ? (
           <div className="mt-6 flex items-center gap-2">
