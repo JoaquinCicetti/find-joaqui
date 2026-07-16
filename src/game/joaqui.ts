@@ -63,6 +63,21 @@ export function playableStats(): {
 export const ROUNDS = 8
 export const MAX_ROUND_SCORE = 1000
 export const ROUND_SECONDS = 45
+export const GRACE_SECONDS = 10
+export const MIN_TIME_FACTOR = 0.4
+
+/**
+ * How much of the accuracy score the clock still allows: 1 during the
+ * first GRACE_SECONDS, then decaying linearly to MIN_TIME_FACTOR at 0:00.
+ */
+export function timeFactor(secondsLeft: number): number {
+  const decayWindow = ROUND_SECONDS - GRACE_SECONDS
+  const used = Math.min(
+    Math.max(ROUND_SECONDS - secondsLeft - GRACE_SECONDS, 0),
+    decayWindow,
+  )
+  return 1 - (1 - MIN_TIME_FACTOR) * (used / decayWindow)
+}
 
 /** Fisher–Yates pick of up to ROUNDS playable shots. */
 export function pickRounds(): MediaItem[] {
