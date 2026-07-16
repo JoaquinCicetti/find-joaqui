@@ -121,7 +121,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
 
   return createPortal(
     <div
-      className={`fixed inset-0 z-50 ${
+      className={`anim-fade fixed inset-0 z-50 ${
         phase === 'intro' || phase === 'done'
           ? 'bg-black/60 backdrop-blur-md'
           : 'bg-paper'
@@ -135,7 +135,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
       )}
 
       {(phase === 'guess' || phase === 'reveal') && item && (
-        <div className="absolute inset-0">
+        <div className="anim-fade absolute inset-0">
           {item.kind === '360' ? (
             <SphereStage
               item={item}
@@ -285,7 +285,10 @@ function IntroPanel({
   }, [])
   return (
     <div className="absolute inset-0 grid place-items-center overflow-y-auto p-4">
-      <div className="glass anim-scale my-auto w-[min(100%,26rem)] rounded-3xl p-7 text-center">
+      <div
+        className="glass anim-scale my-auto w-[min(100%,26rem)] rounded-3xl p-7 text-center"
+        style={{ animationDelay: '60ms' }}
+      >
         <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-white/10 bg-white/[0.04] shadow-[0_0_44px_rgba(157,177,217,0.22)]">
           <IconSearch className="h-9 w-9 text-accent-soft/75" />
         </div>
