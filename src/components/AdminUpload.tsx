@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { loadMedia } from '../data/mediaStore'
 import type { MediaKind } from '../data/panoramas'
 import { guessKind, readExif, uploadMedia } from '../lib/adminApi'
@@ -25,11 +25,25 @@ const ready = (s: Staged) =>
 export function AdminUpload({ onClose }: { onClose: () => void }) {
   const [items, setItems] = useState<Staged[]>([])
   const [busy, setBusy] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
-  const add = async (files: FileList | null) => {
+  // stop the browser from navigating away if a file is dropped outside the zone
+  useEffect(() => {
+    const stop = (e: DragEvent) => e.preventDefault()
+    window.addEventListener('dragover', stop)
+    window.addEventListener('drop', stop)
+    return () => {
+      window.removeEventListener('dragover', stop)
+      window.removeEventListener('drop', stop)
+    }
+  }, [])
+
+  const add = async (files: FileList | File[] | null) => {
     if (!files) return
+    const imgs = [...files].filter((f) => f.type.startsWith('image/'))
+    if (!imgs.length) return
     const staged: Staged[] = await Promise.all(
-      [...files].map(async (file) => {
+      imgs.map(async (file) => {
         const [exif, kind] = await Promise.all([readExif(file), guessKind(file)])
         return {
           file,
@@ -92,9 +106,33 @@ export function AdminUpload({ onClose }: { onClose: () => void }) {
           </button>
         </div>
 
-        <label className="mt-4 flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-white/20 px-4 py-8 text-center text-sm text-ink-muted hover:border-accent-soft/60">
-          <span>Elegí imágenes (JPEG/PNG/WebP). Se leen GPS y fecha del EXIF.</span>
-          <span className="glass-chip rounded-full px-4 py-1.5 text-xs text-ink">
+        <label
+          onDragOver={(e) => {
+            e.preventDefault()
+            if (!dragOver) setDragOver(true)
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+          }}
+          onDrop={(e) => {
+            e.preventDefault()
+            setDragOver(false)
+            add(e.dataTransfer.files)
+          }}
+          className={`mt-4 flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed px-4 py-10 text-center text-sm transition-colors ${
+            dragOver
+              ? 'border-accent-soft bg-accent-soft/10 text-ink'
+              : 'border-white/20 text-ink-muted hover:border-accent-soft/60'
+          }`}
+        >
+          <span className="font-medium">
+            {dragOver ? 'Soltá acá 👇' : 'Arrastrá tus fotos acá'}
+          </span>
+          <span className="text-xs text-ink-muted">
+            JPEG/PNG/WebP · se leen GPS y fecha del EXIF · o tocá para elegir
+          </span>
+          <span className="glass-chip mt-1 rounded-full px-4 py-1.5 text-xs text-ink">
             Seleccionar archivos
           </span>
           <input
