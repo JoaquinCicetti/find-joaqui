@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { checkAdminKey, parseBody } from '../_lib'
+import { checkAdminKey, parseBody } from '../_lib.js'
 
 // Validate the shared secret once so the UI can show a wrong-password error
 // before it starts storing the key in sessionStorage.

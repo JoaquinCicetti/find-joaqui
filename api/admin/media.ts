@@ -8,7 +8,7 @@ import {
   redis,
   requireAdmin,
   type MediaRecord,
-} from '../_lib'
+} from '../_lib.js'
 
 // Persist / remove a media record. Blobs are uploaded directly by the browser;
 // this only writes the metadata row (and cleans up blobs on delete).

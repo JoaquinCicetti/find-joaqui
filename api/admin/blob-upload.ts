@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client'
-import { checkAdminKey, parseBody } from '../_lib'
+import { checkAdminKey, parseBody } from '../_lib.js'
 
 // Token issuer for browser → Blob direct uploads. The browser's upload() calls
 // here to get a short-lived token, so BLOB_READ_WRITE_TOKEN never ships to the

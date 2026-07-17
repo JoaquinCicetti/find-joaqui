@@ -5,7 +5,7 @@ import {
   MEDIA_KEY,
   redis,
   type MediaRecord,
-} from './_lib'
+} from './_lib.js'
 
 // Public read path: the whole media library + Joaqui's hiding spots, built
 // live from Redis. Replaces the build-time manifest import.

@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { LOCATIONS_KEY, parseBody, redis, requireAdmin } from '../_lib'
+import { LOCATIONS_KEY, parseBody, redis, requireAdmin } from '../_lib.js'
 
 // Save where Joaqui hides in one shot: { yaw, pitch } for 360s, { x, y } for
 // flat photos (0..1). Replaces the calibration JSON export + manual commit.
