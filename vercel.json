@@ -1,6 +1,6 @@
 {
   "images": {
-    "sizes": [640, 1080, 1920, 2560, 3840],
+    "sizes": [640, 1080, 1920, 2560, 3840, 4096, 6144, 8192],
     "minimumCacheTTL": 2678400,
     "formats": ["image/webp"],
     "remotePatterns": [

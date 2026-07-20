@@ -24,6 +24,15 @@ export function prefetchImage(url: string): void {
   img.src = url
 }
 
+/** Has this exact URL been loaded (via prefetch or by actually being viewed)?
+ *  Used to skip the loading spinner on images we already have. */
+export const isWarmed = (url: string): boolean => warmed.has(url)
+
+/** Record that a URL is loaded — call from a viewer/img once it finishes. */
+export const markWarmed = (url: string): void => {
+  warmed.add(url)
+}
+
 /** Run non-urgent work when the browser is idle (with a timeout fallback). */
 export function onIdle(fn: () => void): void {
   if (typeof window === 'undefined') return

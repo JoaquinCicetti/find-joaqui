@@ -4,7 +4,7 @@ import { Viewer } from '@photo-sphere-viewer/core'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import { displaySrc, formatCoords, type MediaItem } from '../data/panoramas'
-import { prefetchImage } from '../lib/prefetch'
+import { isWarmed, markWarmed, prefetchImage } from '../lib/prefetch'
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
 import { RingLoader } from './RingField'
@@ -19,14 +19,16 @@ interface MediaModalProps {
 
 function SphereViewer({ item }: { item: MediaItem }) {
   const ref = useRef<HTMLDivElement>(null)
-  const [loaded, setLoaded] = useState(false)
+  const src = displaySrc(item)
+  // if we've already loaded this exact image, don't flash a loader again
+  const [loaded, setLoaded] = useState(() => isWarmed(src))
 
   useEffect(() => {
     if (!ref.current) return
-    setLoaded(false)
+    setLoaded(isWarmed(src))
     const viewer = new Viewer({
       container: ref.current,
-      panorama: displaySrc(item),
+      panorama: src,
       // the gyroscope button only appears on devices with orientation sensors
       navbar: ['zoom', 'move', 'gyroscope', 'fullscreen'],
       plugins: [[GyroscopePlugin, { touchmove: true }]],
@@ -35,9 +37,16 @@ function SphereViewer({ item }: { item: MediaItem }) {
       keyboard: false,
       defaultZoomLvl: 30,
     })
-    viewer.addEventListener('ready', () => setLoaded(true), { once: true })
+    viewer.addEventListener(
+      'ready',
+      () => {
+        setLoaded(true)
+        markWarmed(src)
+      },
+      { once: true },
+    )
     return () => viewer.destroy()
-  }, [item])
+  }, [src])
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-2xl">

@@ -48,8 +48,9 @@ export function displaySrc(item: MediaItem): string {
   if (!import.meta.env.PROD || !/^https?:\/\//.test(item.src)) {
     return asset(item.src)
   }
-  const w = item.kind === '360' ? 3840 : 2560
-  return `/_vercel/image?url=${encodeURIComponent(item.src)}&w=${w}&q=78`
+  // 360s are zoomed into, so they need far more pixels than a flat photo
+  const w = item.kind === '360' ? 6144 : 3840
+  return `/_vercel/image?url=${encodeURIComponent(item.src)}&w=${w}&q=82`
 }
 
 /**

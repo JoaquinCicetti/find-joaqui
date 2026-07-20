@@ -5,6 +5,7 @@ import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
 import { displaySrc, type MediaItem } from '../data/panoramas'
+import { isWarmed, markWarmed } from '../lib/prefetch'
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
 import { useLang } from '../i18n'
 import { IconCompass } from './icons'
@@ -52,19 +53,20 @@ export function SphereStage({
   const viewerRef = useRef<Viewer | null>(null)
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
+  const src = displaySrc(item)
   const [ready, setReady] = useState(0)
-  const [loaded, setLoaded] = useState(false)
+  const [loaded, setLoaded] = useState(() => isWarmed(src))
   const [gyroAvail, setGyroAvail] = useState(false)
   const [gyroOn, setGyroOn] = useState(false)
 
   useEffect(() => {
     if (!ref.current) return
-    setLoaded(false)
+    setLoaded(isWarmed(src))
     setGyroAvail(false)
     setGyroOn(false)
     const viewer = new Viewer({
       container: ref.current,
-      panorama: displaySrc(item),
+      panorama: src,
       navbar: navbar ? ['zoom', 'move', 'fullscreen'] : false,
       plugins: gyro
         ? [MarkersPlugin, [GyroscopePlugin, { touchmove: true }]]
@@ -80,6 +82,7 @@ export function SphereStage({
       () => {
         setReady((r) => r + 1)
         setLoaded(true)
+        markWarmed(src)
       },
       { once: true },
     )
@@ -164,17 +167,21 @@ interface PhotoStageProps {
 
 /** Flat photo that reports normalized click coords and renders AR markers. */
 export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
-  const [loaded, setLoaded] = useState(false)
-  useEffect(() => setLoaded(false), [item])
+  const src = displaySrc(item)
+  const [loaded, setLoaded] = useState(() => isWarmed(src))
+  useEffect(() => setLoaded(isWarmed(src)), [src])
   return (
     <div className="relative grid h-full w-full place-items-center overflow-hidden p-2">
       {!loaded && <RingLoader />}
       <div className="relative max-h-full max-w-full">
         <img
-          src={displaySrc(item)}
+          src={src}
           alt={item.place}
           draggable={false}
-          onLoad={() => setLoaded(true)}
+          onLoad={() => {
+            setLoaded(true)
+            markWarmed(src)
+          }}
           className={`block max-h-[86vh] max-w-full select-none ${
             onPick ? 'cursor-crosshair' : ''
           }`}
