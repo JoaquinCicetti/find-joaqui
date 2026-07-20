@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Viewer } from '@photo-sphere-viewer/core'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
-import { asset, formatCoords, type MediaItem } from '../data/panoramas'
+import { displaySrc, formatCoords, type MediaItem } from '../data/panoramas'
 import { prefetchImage } from '../lib/prefetch'
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
@@ -26,7 +26,7 @@ function SphereViewer({ item }: { item: MediaItem }) {
     setLoaded(false)
     const viewer = new Viewer({
       container: ref.current,
-      panorama: asset(item.src),
+      panorama: displaySrc(item),
       // the gyroscope button only appears on devices with orientation sensors
       navbar: ['zoom', 'move', 'gyroscope', 'fullscreen'],
       plugins: [[GyroscopePlugin, { touchmove: true }]],
@@ -76,11 +76,11 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
     else if (dx < 0 && hasNext) onNavigate(items[idx + 1])
   }
 
-  // warm the shots on either side so arrowing through the gallery is instant
+  // the optimized shots are small (~0.1–0.5 MB), so warm the whole gallery at
+  // once — arrowing (and coming back) is then instant
   useEffect(() => {
-    if (items[idx - 1]) prefetchImage(items[idx - 1].src)
-    if (items[idx + 1]) prefetchImage(items[idx + 1].src)
-  }, [idx, items])
+    items.forEach((it) => prefetchImage(displaySrc(it)))
+  }, [items])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -132,7 +132,7 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
           ) : (
             <>
               <img
-                src={asset(item.src)}
+                src={displaySrc(item)}
                 alt={item.place}
                 decoding="async"
                 className={`h-full w-full object-contain ${expanded ? '' : 'rounded-2xl'}`}

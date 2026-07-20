@@ -38,6 +38,21 @@ export const asset = (path: string): string =>
     : `${import.meta.env.BASE_URL}${path.replace(/^\//, '')}`
 
 /**
+ * The image the viewer/stage should actually load: a downscaled, edge-cached
+ * copy via Vercel's image optimizer (~30–70× smaller than the multi-MB
+ * originals). 360s keep more width for sphere zoom; flat photos need less.
+ * Only used in production builds (the optimizer isn't available under `vite dev`)
+ * and only for http(s) Blob URLs.
+ */
+export function displaySrc(item: MediaItem): string {
+  if (!import.meta.env.PROD || !/^https?:\/\//.test(item.src)) {
+    return asset(item.src)
+  }
+  const w = item.kind === '360' ? 3840 : 2560
+  return `/_vercel/image?url=${encodeURIComponent(item.src)}&w=${w}&q=78`
+}
+
+/**
  * Named places, matched to each image's GPS point by distance.
  * Add an entry when you shoot somewhere new — radius is in km.
  */

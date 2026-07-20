@@ -1,0 +1,13 @@
+{
+  "images": {
+    "sizes": [640, 1080, 1920, 2560, 3840],
+    "minimumCacheTTL": 2678400,
+    "formats": ["image/webp"],
+    "remotePatterns": [
+      {
+        "protocol": "https",
+        "hostname": "8dtnt7jdpcbbqp5d.public.blob.vercel-storage.com"
+      }
+    ]
+  }
+}

@@ -5,7 +5,7 @@ import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
 import { Starfield } from './components/Starfield'
 import { RingField, RingLoader } from './components/RingField'
-import { type MediaItem, type Spot } from './data/panoramas'
+import { displaySrc, type MediaItem, type Spot } from './data/panoramas'
 import { loadMedia, useMedia } from './data/mediaStore'
 import { playableItems, playableStats } from './game/joaqui'
 import { onIdle, prefetchImage } from './lib/prefetch'
@@ -223,8 +223,8 @@ function Page() {
     // shots so tapping through to the viewer opens without a load wait.
     if (spot) {
       importMediaModal()
-      prefetchImage(spot.items[spot.items.length - 1].src)
-      onIdle(() => spot.items.forEach((it) => prefetchImage(it.src)))
+      prefetchImage(displaySrc(spot.items[spot.items.length - 1]))
+      onIdle(() => spot.items.forEach((it) => prefetchImage(displaySrc(it))))
     }
   }
 

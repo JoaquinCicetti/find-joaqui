@@ -1,18 +1,26 @@
-import { asset } from '../data/panoramas'
-
 const warmed = new Set<string>()
+// Retain in-flight <img> objects so the browser doesn't garbage-collect (and
+// cancel) the download before it finishes — the bug that made prefetch flaky.
+const inflight = new Map<string, HTMLImageElement>()
 
 /**
- * Warm the browser cache for an image URL. Photos and 360° panos are both
- * plain image files, so this speeds up both <img> tags and the Photo Sphere
- * Viewer's texture fetch. De-duped so re-prefetching a URL is free.
+ * Warm the browser cache for a ready-to-load image URL (pass `displaySrc(item)`,
+ * not the raw multi-MB original). De-duped; retried on error. Photos and 360°
+ * panos are both plain images, so this speeds up <img> tags and the Photo
+ * Sphere Viewer's texture fetch alike.
  */
-export function prefetchImage(src: string): void {
-  const url = asset(src)
-  if (warmed.has(url)) return
-  warmed.add(url)
+export function prefetchImage(url: string): void {
+  if (!url || warmed.has(url) || inflight.has(url)) return
   const img = new Image()
   img.decoding = 'async'
+  img.onload = () => {
+    inflight.delete(url)
+    warmed.add(url)
+  }
+  img.onerror = () => {
+    inflight.delete(url) // leave un-warmed so a later attempt can retry
+  }
+  inflight.set(url, img)
   img.src = url
 }
 

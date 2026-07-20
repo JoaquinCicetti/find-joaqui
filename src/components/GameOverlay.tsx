@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { MediaItem } from '../data/panoramas'
+import { displaySrc, type MediaItem } from '../data/panoramas'
 import {
   allLocations,
   isSphereLoc,
@@ -36,8 +36,8 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
 
   const start = () => {
     const picked = pickRounds()
-    // warm the first shot (behind the RingLoader) and the one after it
-    picked.slice(0, 2).forEach((r) => prefetchImage(r.src))
+    // optimized shots are small — warm the whole round set up front
+    picked.forEach((r) => prefetchImage(displaySrc(r)))
     setRounds(picked)
     setI(0)
     setScores([])
@@ -77,7 +77,7 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   // keep the next shot warm so advancing rounds never waits on a download
   useEffect(() => {
     const next = rounds[i + 1]
-    if (next) prefetchImage(next.src)
+    if (next) prefetchImage(displaySrc(next))
   }, [rounds, i])
 
   const markers: StageMarker[] = []

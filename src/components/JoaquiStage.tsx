@@ -4,7 +4,7 @@ import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
-import { asset, type MediaItem } from '../data/panoramas'
+import { displaySrc, type MediaItem } from '../data/panoramas'
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
 import { useLang } from '../i18n'
 import { IconCompass } from './icons'
@@ -64,7 +64,7 @@ export function SphereStage({
     setGyroOn(false)
     const viewer = new Viewer({
       container: ref.current,
-      panorama: asset(item.src),
+      panorama: displaySrc(item),
       navbar: navbar ? ['zoom', 'move', 'fullscreen'] : false,
       plugins: gyro
         ? [MarkersPlugin, [GyroscopePlugin, { touchmove: true }]]
@@ -171,7 +171,7 @@ export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
       {!loaded && <RingLoader />}
       <div className="relative max-h-full max-w-full">
         <img
-          src={asset(item.src)}
+          src={displaySrc(item)}
           alt={item.place}
           draggable={false}
           onLoad={() => setLoaded(true)}
