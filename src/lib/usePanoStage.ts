@@ -7,8 +7,8 @@ import { isPanoWarm, markWarmed, prefetchImage, warmPano } from './prefetch'
 /** 'idle' = nothing on the sphere yet, 'placeholder' = the 8 KB blur, 'full' = done. */
 export type Stage = 'idle' | 'placeholder' | 'full'
 
-/** Cold-path stage-1 dissolve. Must register "new round" quickly. */
-const LOW_MS = 1400
+/** Cold-path stage-1 dissolve. Just enough to not be a cut. */
+const LOW_MS = 600
 /** How long we'll sit on an empty stage before admitting we're loading. */
 export const LOADER_DELAY_MS = 700
 
@@ -104,6 +104,11 @@ export function usePanoStage({
       if (wasGyro && gp && !gp.isEnabled()) gp.start().catch(() => {})
     }
 
+    // Start the real download IMMEDIATELY, before touching the placeholder.
+    // Awaiting the placeholder's transition first delayed this request by
+    // ~600ms of pure dead time, for bytes we always need.
+    const fullReady = warmPano(full)
+
     ;(async () => {
       const first = !viewer.state.ready // no previous panorama to dissolve from
 
@@ -123,9 +128,9 @@ export function usePanoStage({
         if (!alive()) return
       }
 
-      // Resolve only once the bytes are downloaded AND decoded, so the dissolve
-      // can never stall halfway through.
-      await warmPano(full)
+      // Resolves once the bytes are downloaded AND decoded, so the dissolve
+      // can never stall halfway through. Usually already settled by here.
+      await fullReady
       if (!alive()) return
 
       await viewer

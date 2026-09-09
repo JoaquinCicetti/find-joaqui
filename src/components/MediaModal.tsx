@@ -12,8 +12,8 @@ import {
   webglAvailable,
 } from '../lib/usePanoStage'
 
-/** Shorter than the game's: arrowing through a gallery needs to feel responsive. */
-const MODAL_DISSOLVE_MS = 2800
+/** Shorter than the game's: arrowing through a gallery needs to feel instant. */
+const MODAL_DISSOLVE_MS = 1100
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
 import { RingLoader } from './RingField'

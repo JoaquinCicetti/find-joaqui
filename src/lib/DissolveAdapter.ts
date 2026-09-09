@@ -29,7 +29,7 @@ export interface DissolveAdapterConfig {
   blurTexels?: number
   /** 'fade' restores stock behaviour — the kill switch @default 'dissolve' */
   effect?: 'dissolve' | 'fade'
-  /** shaping applied on top of PSV's fixed inOutCubic @default p => p ** 1.2 */
+  /** shaping applied on top of PSV's fixed inOutCubic @default p => p ** 0.85 */
   shape?: (p: number) => number
   /** passed through to the base adapter */
   useXmpData?: boolean
@@ -41,7 +41,9 @@ const DEFAULTS = {
   blurUpTo: 512,
   blurTexels: 1.2,
   effect: 'dissolve' as 'dissolve' | 'fade',
-  shape: (p: number) => Math.pow(p, 1.2),
+  // < 1 front-loads the sweep: the picture becomes recognisable early and the
+  // last wisps finish after, rather than most of it arriving at the very end.
+  shape: (p: number) => Math.pow(p, 0.85),
 }
 
 /**
