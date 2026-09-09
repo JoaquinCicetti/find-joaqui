@@ -109,6 +109,15 @@ export function usePanoStage({
     // ~600ms of pure dead time, for bytes we always need.
     const fullReady = warmPano(full)
 
+    // ...and start the camera moving at the same instant, on the panorama still
+    // on screen. The view has to travel to the next shot's framing regardless;
+    // doing it while the bytes are in flight means the wait is spent moving
+    // rather than sitting still, and by the time the dissolve begins the camera
+    // is already there, so its own rotation is a zero-length no-op.
+    if (viewer.state.ready && !reduce) {
+      viewer.animate({ ...framing.position, zoom: framing.zoom, speed: fullMs })
+    }
+
     ;(async () => {
       const first = !viewer.state.ready // no previous panorama to dissolve from
 
