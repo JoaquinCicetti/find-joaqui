@@ -3,8 +3,17 @@ import { createPortal } from 'react-dom'
 import { Viewer } from '@photo-sphere-viewer/core'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
-import { displaySrc, formatCoords, type MediaItem } from '../data/panoramas'
-import { isWarmed, markWarmed, prefetchImage } from '../lib/prefetch'
+import { displaySrc, formatCoords, lowSrc, type MediaItem } from '../data/panoramas'
+import { isWarmed, markWarmed, prefetchImage, warmPano } from '../lib/prefetch'
+import { DissolveAdapter } from '../lib/DissolveAdapter'
+import {
+  useDelayedLoader,
+  usePanoStage,
+  webglAvailable,
+} from '../lib/usePanoStage'
+
+/** Shorter than the game's: arrowing through a gallery needs to feel responsive. */
+const MODAL_DISSOLVE_MS = 2800
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
 import { RingLoader } from './RingField'
@@ -19,45 +28,66 @@ interface MediaModalProps {
 
 function SphereViewer({ item }: { item: MediaItem }) {
   const ref = useRef<HTMLDivElement>(null)
-  const src = displaySrc(item)
-  // if we've already loaded this exact image, don't flash a loader again
-  const [loaded, setLoaded] = useState(() => isWarmed(src))
+  const webgl = webglAvailable()
 
-  useEffect(() => {
-    if (!ref.current) return
-    setLoaded(isWarmed(src))
-    const viewer = new Viewer({
-      container: ref.current,
-      panorama: src,
-      // the gyroscope button only appears on devices with orientation sensors
-      navbar: ['zoom', 'move', 'gyroscope', 'fullscreen'],
-      plugins: [[GyroscopePlugin, { touchmove: true }]],
-      touchmoveTwoFingers: false,
-      // ← / → belong to the gallery, not to panning the sphere
-      keyboard: false,
-      defaultZoomLvl: 30,
-    })
-    viewer.addEventListener(
-      'ready',
-      () => {
-        setLoaded(true)
-        markWarmed(src)
-      },
-      { once: true },
+  const { stage } = usePanoStage({
+    containerRef: ref,
+    item,
+    fullMs: MODAL_DISSOLVE_MS,
+    deps: [webgl],
+    build: (container) =>
+      new Viewer({
+        container,
+        adapter: DissolveAdapter.withConfig({}),
+        defaultTransition: {
+          speed: MODAL_DISSOLVE_MS,
+          rotation: false,
+          effect: 'fade',
+        },
+        canvasBackground: 'transparent',
+        // the gyroscope button only appears on devices with orientation sensors
+        navbar: ['zoom', 'move', 'gyroscope', 'fullscreen'],
+        plugins: [[GyroscopePlugin, { touchmove: true }]],
+        touchmoveTwoFingers: false,
+        // ← / → belong to the gallery, not to panning the sphere
+        keyboard: false,
+        defaultZoomLvl: 30,
+      }),
+  })
+
+  const showLoader = useDelayedLoader(stage)
+
+  if (!webgl) {
+    return (
+      <div className="relative grid h-full w-full place-items-center overflow-hidden rounded-2xl">
+        <img
+          src={displaySrc(item)}
+          alt={item.place}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
     )
-    return () => viewer.destroy()
-  }, [src])
+  }
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-2xl">
-      <div ref={ref} className="h-full w-full" />
-      {!loaded && <RingLoader />}
+      <img
+        src={lowSrc(item)}
+        alt=""
+        aria-hidden
+        className={`pano-placeholder ${stage === 'full' ? 'is-hidden' : ''}`}
+      />
+      <div ref={ref} className="relative h-full w-full" />
+      {showLoader && <RingLoader />}
     </div>
   )
 }
 
 export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps) {
   const { t, lang } = useLang()
+  const [photoLoaded, setPhotoLoaded] = useState(() => isWarmed(displaySrc(item)))
+  useEffect(() => setPhotoLoaded(isWarmed(displaySrc(item))), [item])
+
   const idx = items.findIndex((i) => i.id === item.id)
   const hasPrev = idx > 0
   const hasNext = idx >= 0 && idx < items.length - 1
@@ -88,7 +118,13 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
   // the optimized shots are small (~0.1–0.5 MB), so warm the whole gallery at
   // once — arrowing (and coming back) is then instant
   useEffect(() => {
-    items.forEach((it) => prefetchImage(displaySrc(it)))
+    items.forEach((it) => {
+      // Panoramas are loaded by XHR-to-Blob, so an <img> prefetch would not
+      // feed them; flat photos are the other way round.
+      if (it.kind === '360') warmPano(displaySrc(it))
+      else prefetchImage(displaySrc(it))
+      prefetchImage(lowSrc(it))
+    })
   }, [items])
 
   useEffect(() => {
@@ -141,10 +177,24 @@ export function MediaModal({ item, items, onNavigate, onClose }: MediaModalProps
           ) : (
             <>
               <img
+                src={lowSrc(item)}
+                alt=""
+                aria-hidden
+                className={`photo-placeholder ${photoLoaded ? 'is-hidden' : ''} ${
+                  expanded ? '' : 'rounded-2xl'
+                }`}
+              />
+              <img
                 src={displaySrc(item)}
                 alt={item.place}
                 decoding="async"
-                className={`h-full w-full object-contain ${expanded ? '' : 'rounded-2xl'}`}
+                onLoad={() => {
+                  setPhotoLoaded(true)
+                  markWarmed(displaySrc(item))
+                }}
+                className={`photo-full relative h-full w-full object-contain ${
+                  photoLoaded ? 'is-shown' : ''
+                } ${expanded ? '' : 'rounded-2xl'}`}
               />
               {/* flat photos have no PSV navbar — give them their own toggle */}
               <button

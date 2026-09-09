@@ -43,15 +43,46 @@ export const asset = (path: string): string =>
  * originals). 360s keep more width for sphere zoom; flat photos need less.
  * Only used in production builds (the optimizer isn't available under `vite dev`)
  * and only for http(s) Blob URLs.
+ *
+ * 4096 rather than 6144 for 360s: it halves the transfer (2.4 MB → 1.1 MB) and
+ * most mobile GPUs cap `maxTextureSize` at 4096 anyway, so the extra width was
+ * being thrown away by an OffscreenCanvas downscale on exactly the devices that
+ * could least afford to download it.
  */
 export function displaySrc(item: MediaItem): string {
   if (!import.meta.env.PROD || !/^https?:\/\//.test(item.src)) {
     return asset(item.src)
   }
-  // 360s are zoomed into, so they need far more pixels than a flat photo
-  const w = item.kind === '360' ? 6144 : 3840
+  // 360s are zoomed into, so they need more pixels than a flat photo
+  const w = item.kind === '360' ? 4096 : 3840
   return `/_vercel/image?url=${encodeURIComponent(item.src)}&w=${w}&q=82`
 }
+
+/**
+ * The instant stand-in shown while `displaySrc` downloads: the ~8 KB micro
+ * thumbnail generated at upload time. Deliberately NOT an optimizer URL — the
+ * optimizer has to fetch and decode the multi-MB original before it can resize,
+ * so a cold `w=640` costs about what a cold `w=4096` costs and defeats the point.
+ */
+export const lowSrc = (item: MediaItem): string => asset(item.micro)
+
+/**
+ * Declare a placeholder to be a full, uncropped sphere.
+ *
+ * PSV's `mergePanoData` infers `fullWidth = max(w, h * 2)` and then *centres*
+ * the crop, so a micro thumb that came out 128×65 instead of 128×64 would be
+ * placed with a ~2.8° yaw offset from the full-res frame — which the dissolve
+ * would show as a horizontal slip. A ≤1.5% vertical stretch on a blurred 8 KB
+ * image is invisible; that slip is not.
+ */
+export const FULL_SPHERE = (img: { width: number; height: number }) => ({
+  fullWidth: img.width,
+  fullHeight: Math.round(img.width / 2),
+  croppedWidth: img.width,
+  croppedHeight: Math.round(img.width / 2),
+  croppedX: 0,
+  croppedY: 0,
+})
 
 /**
  * Named places, matched to each image's GPS point by distance.

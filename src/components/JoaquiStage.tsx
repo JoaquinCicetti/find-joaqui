@@ -4,12 +4,21 @@ import { MarkersPlugin } from '@photo-sphere-viewer/markers-plugin'
 import { GyroscopePlugin } from '@photo-sphere-viewer/gyroscope-plugin'
 import '@photo-sphere-viewer/core/index.css'
 import '@photo-sphere-viewer/markers-plugin/index.css'
-import { displaySrc, type MediaItem } from '../data/panoramas'
+import { displaySrc, lowSrc, type MediaItem } from '../data/panoramas'
 import { isWarmed, markWarmed } from '../lib/prefetch'
+import { DissolveAdapter } from '../lib/DissolveAdapter'
+import {
+  useDelayedLoader,
+  usePanoStage,
+  webglAvailable,
+} from '../lib/usePanoStage'
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
 import { useLang } from '../i18n'
 import { IconCompass } from './icons'
 import { RingLoader } from './RingField'
+
+/** The game's reveal is the hero moment — unhurried on purpose. */
+const GAME_DISSOLVE_MS = 4200
 
 /** A marker drawn on a stage: the player's reticle or Joaqui's real spot. */
 export interface StageMarker {
@@ -50,55 +59,65 @@ export function SphereStage({
 }: SphereStageProps) {
   const { t } = useLang()
   const ref = useRef<HTMLDivElement>(null)
-  const viewerRef = useRef<Viewer | null>(null)
   const onPickRef = useRef(onPick)
   onPickRef.current = onPick
-  const src = displaySrc(item)
-  const [ready, setReady] = useState(0)
-  const [loaded, setLoaded] = useState(() => isWarmed(src))
   const [gyroAvail, setGyroAvail] = useState(false)
   const [gyroOn, setGyroOn] = useState(false)
+  const webgl = webglAvailable()
 
+  const { viewerRef, stage, ready } = usePanoStage({
+    containerRef: ref,
+    item,
+    fullMs: GAME_DISSOLVE_MS,
+    deps: [navbar, gyro, webgl],
+    build: (container) => {
+      const viewer = new Viewer({
+        container,
+        // No `panorama` here on purpose: usePanoStage drives every load through
+        // the same path, so the first item isn't a special case.
+        adapter: DissolveAdapter.withConfig({}),
+        defaultTransition: {
+          speed: GAME_DISSOLVE_MS,
+          rotation: false,
+          effect: 'fade',
+        },
+        canvasBackground: 'transparent',
+        navbar: navbar ? ['zoom', 'move', 'fullscreen'] : false,
+        plugins: gyro
+          ? [MarkersPlugin, [GyroscopePlugin, { touchmove: true }]]
+          : [MarkersPlugin],
+        touchmoveTwoFingers: false,
+        defaultZoomLvl: 30,
+      })
+      viewer.addEventListener('click', ({ data }) => {
+        if (!data.rightclick) {
+          onPickRef.current?.({ yaw: data.yaw, pitch: data.pitch })
+        }
+      })
+      if (gyro) {
+        const plugin = viewer.getPlugin<GyroscopePlugin>(GyroscopePlugin)
+        plugin?.isSupported().then(setGyroAvail).catch(() => {})
+        plugin?.addEventListener('gyroscope-updated', (e) =>
+          setGyroOn(e.gyroscopeEnabled),
+        )
+      }
+      return viewer
+    },
+  })
+
+  const showLoader = useDelayedLoader(stage)
+
+  // The viewer now outlives the item, so stale markers would hover over the new
+  // sphere. Clear them up front; positions are yaw/pitch, so nothing else needs
+  // recomputing when the panorama changes.
   useEffect(() => {
-    if (!ref.current) return
-    setLoaded(isWarmed(src))
-    setGyroAvail(false)
-    setGyroOn(false)
-    const viewer = new Viewer({
-      container: ref.current,
-      panorama: src,
-      navbar: navbar ? ['zoom', 'move', 'fullscreen'] : false,
-      plugins: gyro
-        ? [MarkersPlugin, [GyroscopePlugin, { touchmove: true }]]
-        : [MarkersPlugin],
-      touchmoveTwoFingers: false,
-      defaultZoomLvl: 30,
-    })
-    viewer.addEventListener('click', ({ data }) => {
-      if (!data.rightclick) onPickRef.current?.({ yaw: data.yaw, pitch: data.pitch })
-    })
-    viewer.addEventListener(
-      'ready',
-      () => {
-        setReady((r) => r + 1)
-        setLoaded(true)
-        markWarmed(src)
-      },
-      { once: true },
-    )
-    if (gyro) {
-      const plugin = viewer.getPlugin<GyroscopePlugin>(GyroscopePlugin)
-      plugin?.isSupported().then(setGyroAvail).catch(() => {})
-      plugin?.addEventListener('gyroscope-updated', (e) =>
-        setGyroOn(e.gyroscopeEnabled),
-      )
+    const plugin = viewerRef.current?.getPlugin<MarkersPlugin>(MarkersPlugin)
+    try {
+      plugin?.setMarkers([])
+    } catch {
+      // viewer torn down mid-update — safe to ignore
     }
-    viewerRef.current = viewer
-    return () => {
-      viewer.destroy()
-      viewerRef.current = null
-    }
-  }, [item, navbar, gyro])
+  }, [item.id, viewerRef])
 
   const toggleGyro = () => {
     const plugin = viewerRef.current?.getPlugin<GyroscopePlugin>(GyroscopePlugin)
@@ -130,17 +149,40 @@ export function SphereStage({
     } catch {
       // viewer being torn down mid-update — safe to ignore
     }
-  }, [markers, ready])
+  }, [markers, ready, viewerRef])
 
   useEffect(() => {
     const viewer = viewerRef.current
-    if (!viewer || !ready || !focus) return
+    // Gated on `stage`, not `ready`: `ready` fires once for the whole viewer
+    // lifetime now, so it would let the reveal animate the *previous* sphere.
+    if (!viewer || stage !== 'full' || !focus) return
     viewer.animate({ yaw: focus.yaw, pitch: focus.pitch, speed: '4rpm' })
-  }, [focus, ready])
+  }, [focus, stage, viewerRef])
+
+  if (!webgl) {
+    // A flat equirectangular image isn't a sphere, but it beats an error card.
+    return (
+      <div className="relative grid h-full w-full place-items-center overflow-hidden">
+        <img
+          src={displaySrc(item)}
+          alt={item.place}
+          className="max-h-full max-w-full object-contain"
+        />
+      </div>
+    )
+  }
 
   return (
-    <div className="relative h-full w-full">
-      <div ref={ref} className="h-full w-full" />
+    <div className="relative h-full w-full overflow-hidden">
+      {/* Paints from cache on the first frame, so there is never a blank stage
+          under the transparent canvas. */}
+      <img
+        src={lowSrc(item)}
+        alt=""
+        aria-hidden
+        className={`pano-placeholder ${stage === 'full' ? 'is-hidden' : ''}`}
+      />
+      <div ref={ref} className="relative h-full w-full" />
       {gyro && gyroAvail && (
         <button
           onClick={toggleGyro}
@@ -154,7 +196,7 @@ export function SphereStage({
           <IconCompass className="h-5 w-5" />
         </button>
       )}
-      {!loaded && <RingLoader />}
+      {showLoader && <RingLoader />}
     </div>
   )
 }
@@ -172,8 +214,16 @@ export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
   useEffect(() => setLoaded(isWarmed(src)), [src])
   return (
     <div className="relative grid h-full w-full place-items-center overflow-hidden p-2">
-      {!loaded && <RingLoader />}
       <div className="relative max-h-full max-w-full">
+        {/* Blurred stand-in underneath, so the full-res resolves *into* it
+            instead of replacing a blank box. */}
+        <img
+          src={lowSrc(item)}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className={`photo-placeholder ${loaded ? 'is-hidden' : ''}`}
+        />
         <img
           src={src}
           alt={item.place}
@@ -182,9 +232,9 @@ export function PhotoStage({ item, markers, onPick }: PhotoStageProps) {
             setLoaded(true)
             markWarmed(src)
           }}
-          className={`block max-h-[86vh] max-w-full select-none ${
-            onPick ? 'cursor-crosshair' : ''
-          }`}
+          className={`photo-full relative block max-h-[86vh] max-w-full select-none ${
+            loaded ? 'is-shown' : ''
+          } ${onPick ? 'cursor-crosshair' : ''}`}
           onClick={(e) => {
             if (!onPick) return
             const rect = e.currentTarget.getBoundingClientRect()
