@@ -20,7 +20,7 @@ import { RingLoader } from './RingField'
 /** Long enough to read as a dissolve, short enough not to read as loading.
  *  The bytes are typically in hand ~1s in, so everything past this is pure
  *  animation the player is waiting through. */
-const GAME_DISSOLVE_MS = 1500
+const GAME_DISSOLVE_MS = 900
 
 /** A marker drawn on a stage: the player's reticle or Joaqui's real spot. */
 export interface StageMarker {

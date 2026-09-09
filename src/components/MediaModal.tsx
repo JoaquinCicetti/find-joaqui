@@ -13,7 +13,7 @@ import {
 } from '../lib/usePanoStage'
 
 /** Shorter than the game's: arrowing through a gallery needs to feel instant. */
-const MODAL_DISSOLVE_MS = 1100
+const MODAL_DISSOLVE_MS = 700
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
 import { RingLoader } from './RingField'

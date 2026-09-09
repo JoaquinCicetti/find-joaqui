@@ -8,7 +8,7 @@ import { isPanoWarm, markWarmed, prefetchImage, warmPano } from './prefetch'
 export type Stage = 'idle' | 'placeholder' | 'full'
 
 /** Cold-path stage-1 dissolve. Just enough to not be a cut. */
-const LOW_MS = 600
+const LOW_MS = 400
 /** How long we'll sit on an empty stage before admitting we're loading. */
 export const LOADER_DELAY_MS = 700
 
