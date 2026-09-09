@@ -63,12 +63,19 @@ export function displaySrc(item: MediaItem): string {
 }
 
 /**
- * The instant stand-in shown while `displaySrc` downloads: the ~8 KB micro
- * thumbnail generated at upload time. Deliberately NOT an optimizer URL — the
- * optimizer has to fetch and decode the multi-MB original before it can resize,
- * so a cold `w=640` costs about what a cold `w=4096` costs and defeats the point.
+ * The instant stand-in shown while `displaySrc` downloads: the ~60 KB, 480px
+ * thumbnail generated at upload time.
+ *
+ * Not the 128px micro — that is legible as a colour wash but not as a place, so
+ * the reveal still felt like waiting for the picture to arrive. At 480px the
+ * scene is recognisable immediately and the full-res reads as a sharpening
+ * rather than an arrival, which is the whole point of the two-stage load.
+ *
+ * Deliberately not an optimizer URL either: the optimizer must fetch and decode
+ * the multi-MB original before it can resize, so a cold small variant costs
+ * about what a cold large one does.
  */
-export const lowSrc = (item: MediaItem): string => asset(item.micro)
+export const lowSrc = (item: MediaItem): string => asset(item.thumb)
 
 /**
  * Declare a placeholder to be a full, uncropped sphere.
