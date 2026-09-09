@@ -28,6 +28,10 @@ export interface MediaRecord {
   lng: number
   /** YYYY-MM */
   date: string
+  /** Manual place-name override; falls back to GPS matching when absent. */
+  place?: string
+  /** Country in English — localized for display by countryName() in i18n. */
+  country?: string
 }
 
 /** Blob URLs are already absolute — pass them through. Relative paths (dev
@@ -166,12 +170,16 @@ export function buildItems(records: MediaRecord[]): MediaItem[] {
     .filter((r) => r.lat != null && r.lng != null)
     .map((r) => {
       const found = locate(r.lat, r.lng)
+      // An explicit override (set in the admin tool) always wins; the PLACES
+      // radius match is the fallback for everything that hasn't been named.
+      const place = r.place?.trim() || found?.place
+      const country = r.country?.trim() || found?.country
       return {
         id: r.id,
         kind: r.kind,
-        title: found?.place ?? `${r.lat.toFixed(2)}, ${r.lng.toFixed(2)}`,
-        place: found?.place ?? 'Unknown place',
-        country: found?.country ?? '',
+        title: place ?? `${r.lat.toFixed(2)}, ${r.lng.toFixed(2)}`,
+        place: place ?? 'Unknown place',
+        country: country ?? '',
         coords: [r.lng, r.lat] as [number, number],
         date: r.date,
         src: r.blobUrl,

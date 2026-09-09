@@ -23,6 +23,10 @@ export interface MediaRecord {
   lat: number
   lng: number
   date: string
+  /** Manual place-name override; falls back to GPS matching when absent. */
+  place?: string
+  /** Country in English — localized for display by countryName() in i18n. */
+  country?: string
 }
 
 /** Constant-time, constant-length compare against ADMIN_PASSWORD. */

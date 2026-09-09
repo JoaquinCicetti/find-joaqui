@@ -239,6 +239,9 @@ const COUNTRIES_ES: Record<string, string> = {
   Italy: 'Italia',
   'United Kingdom': 'Reino Unido',
   Croatia: 'Croacia',
+  France: 'Francia',
+  Turkey: 'Turquía',
+  Netherlands: 'Países Bajos',
 }
 
 /** Country names are stored in English; localize for display. */

@@ -41,6 +41,20 @@ export async function saveLocation(
   if (!res.ok) throw new Error(`save location failed (${res.status})`)
 }
 
+/** Rename a shot. Empty strings clear the override and restore GPS matching. */
+export async function savePlace(
+  id: string,
+  place: string,
+  country: string,
+): Promise<void> {
+  const res = await fetch('/api/admin/place', {
+    method: 'PUT',
+    headers: authHeaders(),
+    body: JSON.stringify({ id, place, country }),
+  })
+  if (!res.ok) throw new Error(`save place failed (${res.status})`)
+}
+
 export async function deleteMedia(id: string): Promise<void> {
   const res = await fetch(`/api/admin/media?id=${encodeURIComponent(id)}`, {
     method: 'DELETE',

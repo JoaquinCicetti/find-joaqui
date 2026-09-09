@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadMedia, useMedia } from '../data/mediaStore'
+import type { MediaItem } from '../data/panoramas'
 import {
   allLocations,
   isSphereLoc,
@@ -13,6 +14,7 @@ import {
   getAdminKey,
   login,
   saveLocation,
+  savePlace,
 } from '../lib/adminApi'
 import { AdminUpload } from './AdminUpload'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
@@ -238,15 +240,19 @@ function AdminWorkspace({ onLogout }: { onLogout: () => void }) {
 
       <footer className="glass z-10 m-3 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl px-4 py-3">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium">
-            {item ? `${safeI + 1}/${media.length} · ${item.place}` : '—'}
+          <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+            <span className="text-ink-muted">
+              {item ? `${safeI + 1}/${media.length}` : '—'}
+            </span>
             {item && (
-              <span className="text-ink-muted">
-                {' '}
-                · {item.kind} · {item.date}
-              </span>
+              <>
+                <PlaceEditor item={item} />
+                <span className="text-ink-muted">
+                  · {item.kind} · {item.date}
+                </span>
+              </>
             )}
-          </p>
+          </div>
           <p className="font-mono text-xs text-ink-muted">
             {item ? coordLabel : ''}
             {saveState === 'saving' && (
@@ -285,5 +291,80 @@ function AdminWorkspace({ onLogout }: { onLogout: () => void }) {
 
       {uploadOpen && <AdminUpload onClose={() => setUploadOpen(false)} />}
     </div>
+  )
+}
+
+/**
+ * Rename one shot. Names normally come from the GPS radius match in
+ * panoramas.ts, so anywhere that table doesn't cover reads "Unknown place" —
+ * this is how you fix that without a code change and a redeploy.
+ *
+ * Clearing a field restores GPS matching for it.
+ */
+function PlaceEditor({ item }: { item: MediaItem }) {
+  const [place, setPlace] = useState(item.place)
+  const [country, setCountry] = useState(item.country)
+  const [state, setState] = useState<'idle' | 'saving' | 'error'>('idle')
+
+  // a different shot scrolled in — show its values, not the previous one's
+  useEffect(() => {
+    setPlace(item.place)
+    setCountry(item.country)
+    setState('idle')
+  }, [item.id, item.place, item.country])
+
+  const dirty = place !== item.place || country !== item.country
+
+  const commit = async () => {
+    if (!dirty) return
+    setState('saving')
+    try {
+      // 'Unknown place' is our own placeholder, never a name worth storing
+      await savePlace(item.id, place === 'Unknown place' ? '' : place, country)
+      await loadMedia(true)
+      setState('idle')
+    } catch {
+      setState('error')
+    }
+  }
+
+  const onKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
+    if (e.key === 'Escape') {
+      setPlace(item.place)
+      setCountry(item.country)
+    }
+  }
+
+  return (
+    <span className="flex items-center gap-1.5">
+      <input
+        value={place}
+        onChange={(e) => setPlace(e.target.value)}
+        onBlur={commit}
+        onKeyDown={onKey}
+        placeholder="Lugar"
+        aria-label="Nombre del lugar"
+        className="glass-chip w-44 rounded-full px-3 py-1 text-sm outline-none focus:border-accent-soft"
+      />
+      <input
+        value={country}
+        onChange={(e) => setCountry(e.target.value)}
+        onBlur={commit}
+        onKeyDown={onKey}
+        placeholder="País (en inglés)"
+        aria-label="País"
+        className="glass-chip w-36 rounded-full px-3 py-1 text-sm outline-none focus:border-accent-soft"
+      />
+      {state === 'saving' && (
+        <span className="text-xs text-accent-soft">guardando…</span>
+      )}
+      {state === 'error' && (
+        <span className="text-xs text-red-400">error</span>
+      )}
+      {state === 'idle' && dirty && (
+        <span className="text-xs text-ink-muted">sin guardar</span>
+      )}
+    </span>
   )
 }
