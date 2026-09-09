@@ -9,7 +9,7 @@ import { RingField, RingLoader } from './components/RingField'
 import { displaySrc, type MediaItem, type Spot } from './data/panoramas'
 import { loadMedia, useMedia } from './data/mediaStore'
 import { playableItems, playableStats } from './game/joaqui'
-import { onIdle, prefetchImage } from './lib/prefetch'
+import { onIdle, prefetchImage, warmPano } from './lib/prefetch'
 import { LangProvider, useLang } from './i18n'
 
 // Photo Sphere Viewer pulls in three.js — only load it when a viewer is opened.
@@ -215,8 +215,10 @@ function Page() {
     // shots so tapping through to the viewer opens without a load wait.
     if (spot) {
       importMediaModal()
-      prefetchImage(displaySrc(spot.items[spot.items.length - 1]))
-      onIdle(() => spot.items.forEach((it) => prefetchImage(displaySrc(it))))
+      const warm = (it: MediaItem) =>
+        it.kind === '360' ? warmPano(displaySrc(it)) : prefetchImage(displaySrc(it))
+      warm(spot.items[spot.items.length - 1])
+      onIdle(() => spot.items.forEach(warm))
     }
   }
 

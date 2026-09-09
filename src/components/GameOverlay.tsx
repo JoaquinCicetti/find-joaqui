@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { displaySrc, type MediaItem } from '../data/panoramas'
+import { displaySrc, lowSrc, type MediaItem } from '../data/panoramas'
 import {
   allLocations,
   isSphereLoc,
@@ -19,7 +19,7 @@ import {
   submitScore,
   type ScoreEntry,
 } from '../game/api'
-import { prefetchImage } from '../lib/prefetch'
+import { prefetchImage, warmPano } from '../lib/prefetch'
 import { useLang } from '../i18n'
 import { IconClose, IconSearch } from './icons'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
@@ -54,7 +54,14 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   const start = () => {
     const picked = pickRounds()
     // optimized shots are small — warm the whole round set up front
-    picked.forEach((r) => prefetchImage(displaySrc(r)))
+    // Warm PSV's own cache, not just the <img> cache — the sphere loads by
+    // XHR-to-Blob and won't reuse a no-cors <img> entry. Warming the whole
+    // round set up front is what lets the steady-state round change skip the
+    // placeholder and dissolve straight from one panorama into the next.
+    picked.forEach((r) => {
+      warmPano(displaySrc(r))
+      prefetchImage(lowSrc(r))
+    })
     setRounds(picked)
     setI(0)
     setScores([])
@@ -115,7 +122,10 @@ export function GameOverlay({ onClose }: { onClose: () => void }) {
   // keep the next shot warm so advancing rounds never waits on a download
   useEffect(() => {
     const next = rounds[i + 1]
-    if (next) prefetchImage(displaySrc(next))
+    if (next) {
+      warmPano(displaySrc(next))
+      prefetchImage(lowSrc(next))
+    }
   }, [rounds, i])
 
   const markers: StageMarker[] = []
