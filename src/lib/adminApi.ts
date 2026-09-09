@@ -172,7 +172,25 @@ export async function uploadMedia(
     body: JSON.stringify(rec),
   })
   if (!res.ok) throw new Error(`save media failed (${res.status})`)
+
+  // Pay the image optimizer's transform cost here, once, instead of making the
+  // first visitor wait ~2s for it. Vercel generates each (url, width, quality)
+  // on first request — cold is ~1.9s, cached is ~0.3s — so a single throwaway
+  // request now keeps this shot fast for everyone until the cache TTL expires.
+  // Deliberately not awaited: a failure here costs nothing but a slow first view.
+  void fetch(displayUrlFor(rec), { headers: { Accept: 'image/webp,*/*' } }).catch(
+    () => {},
+  )
+
   return rec
+}
+
+/** The optimizer URL the viewer will ask for. Mirrors displaySrc() in
+ *  data/panoramas.ts, which can't be imported here without pulling the whole
+ *  media module into the admin bundle. */
+function displayUrlFor(rec: MediaRecord): string {
+  const w = rec.kind === '360' ? 4096 : 3840
+  return `/_vercel/image?url=${encodeURIComponent(rec.blobUrl)}&w=${w}&q=82`
 }
 
 /** Aspect-ratio guess: equirectangular 360s are ~2:1. */
