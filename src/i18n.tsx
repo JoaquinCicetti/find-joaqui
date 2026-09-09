@@ -37,6 +37,8 @@ interface GameDict {
   again: string
   close: string
   gyro: string
+  /** one-time coach mark on the gyroscope button (mobile only) */
+  gyroHint: string
   seeTop: string
   scName: string
   scTime: string
@@ -48,7 +50,7 @@ interface GameDict {
 interface Dict {
   taglineA: string
   taglineB: string
-  sub: (n: number, places: number, countries: number) => string
+  sub: (n: number) => string
   pano: string
   photo: string
   /** short row labels in the location card */
@@ -74,8 +76,7 @@ const dictionaries: Record<Lang, Dict> = {
   es: {
     taglineA: 'Buscando',
     taglineB: 'al Joaqui.',
-    sub: (n, places, countries) =>
-      `Me escondí en ${n} fotos aéreas en 360°, por ${places} rincones de ${countries} países. Girá el globo y encontrame.`,
+    sub: (n) => `Me escondí en ${n} panorámicas. Girá el globo y buscame.`,
     pano: 'Panorámica 360°',
     photo: 'Fotografía',
     photosRow: 'Fotos',
@@ -94,19 +95,19 @@ const dictionaries: Record<Lang, Dict> = {
     loadError: 'No pude cargar las fotos. Revisá tu conexión.',
     retry: 'Reintentar',
     g: {
-      cta: 'Jugá a encontrarme',
+      cta: 'Vení a buscarme',
       best: (n) => `Récord: ${n}`,
       introTitle: 'Buscando al Joaqui',
       introBody: (n) =>
-        `Estoy escondido en ${n} fotos, al mejor estilo ¿Dónde está Wally? ¿Me encontrás?`,
-      how1: 'Recorré la escena: girá y hacé zoom',
-      how2: 'Tocá justo donde creas que estoy',
-      how3: 'Cuanto más cerca y más rápido, más puntos (hasta 1000 por ronda)',
+        `Me escondí en ${n} panorámicas, tipo ¿Dónde está Wally? A ver si me encontrás.`,
+      how1: 'Paseá por la escena: girá y hacé zoom',
+      how2: 'Tocá justo donde te parece que estoy',
+      how3: 'Cuanto más cerca y más rápido, mejor te va',
       start: 'Jugar',
       later: 'Ahora no',
       round: (a, b) => `Ronda ${a} de ${b}`,
-      tapHint: 'Tocá donde creas que estoy',
-      adjustHint: 'Afiná el punto y confirmá',
+      tapHint: 'Tocá donde te parece que estoy',
+      adjustHint: 'Movelo si querés y confirmá',
       confirm: 'Confirmar',
       found: '¡Me encontraste!',
       away360: (deg) => `Le pifiaste por ${deg}°`,
@@ -115,27 +116,27 @@ const dictionaries: Record<Lang, Dict> = {
       next: 'Siguiente',
       results: '¿Cómo te fue?',
       total: 'Puntaje final',
-      namePh: 'Tu nombre',
-      save: 'Guardar puntaje',
+      namePh: '¿Cómo te llamás?',
+      save: 'Guardar',
       saving: 'Guardando…',
-      savedLocal: 'Sin conexión: quedó guardado en este dispositivo',
+      savedLocal: 'Sin internet: te lo guardé en este aparato',
       board: 'Ranking',
-      again: 'Jugar de nuevo',
+      again: 'Otra vuelta',
       close: 'Cerrar',
-      gyro: 'Mirar moviendo el celular',
+      gyro: 'Mirar moviendo el celu',
+      gyroHint: 'Tocá acá y movés el celu para mirar alrededor, como si estuvieras parado ahí.',
       seeTop: 'Ver ranking',
       scName: 'Nombre',
       scTime: 'Tiempo',
       scPts: 'Puntos',
       scBack: 'Volver al globo',
-      scEmpty: 'Todavía no hay puntajes',
+      scEmpty: 'Todavía no jugó nadie. ¿Arrancás vos?',
     },
   },
   en: {
     taglineA: 'Finding',
     taglineB: 'Joaqui.',
-    sub: (n, places, countries) =>
-      `I hid in ${n} aerial 360° shots, across ${places} corners of ${countries} countries. Spin the globe and find me.`,
+    sub: (n) => `I hid in ${n} panoramas. Spin the globe and find me.`,
     pano: '360° panorama',
     photo: 'Photograph',
     photosRow: 'Photos',
@@ -161,7 +162,7 @@ const dictionaries: Record<Lang, Dict> = {
         `I'm hiding in ${n} of these shots, Where's-Wally style. Can you spot me?`,
       how1: 'Explore the scene: pan and zoom around',
       how2: 'Tap the exact spot where you think I am',
-      how3: 'The closer and the faster, the more points (up to 1000 per round)',
+      how3: 'The closer and the faster, the better you do',
       start: 'Play',
       later: 'Not now',
       round: (a, b) => `Round ${a} of ${b}`,
@@ -183,6 +184,7 @@ const dictionaries: Record<Lang, Dict> = {
       again: 'Play again',
       close: 'Close',
       gyro: 'Look around by moving your phone',
+      gyroHint: 'Tap this, then move your phone to look around — as if you were standing there.',
       seeTop: 'Full leaderboard',
       scName: 'Name',
       scTime: 'Time',

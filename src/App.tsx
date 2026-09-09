@@ -131,7 +131,7 @@ function GameFooter({
     >
       <div className="glass anim-rise pointer-events-auto flex w-full max-w-xl flex-col gap-3 rounded-2xl px-5 py-4 sm:flex-row sm:items-center sm:gap-5 sm:px-6">
         <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-ink-muted sm:text-sm">
-          {t.sub(stats.count, stats.places, stats.countries)}
+          {t.sub(stats.count)}
         </p>
         {onPlay && (
           <div className="flex shrink-0 items-center justify-between gap-4 sm:justify-end">

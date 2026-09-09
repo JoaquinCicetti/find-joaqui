@@ -300,7 +300,7 @@ function IntroPanel({
 }) {
   const { t } = useLang()
   const g = t.g
-  const [top, setTop] = useState<ScoreEntry[]>([])
+  const [top, setTop] = useState<ScoreEntry[] | null>(null)
   useEffect(() => {
     fetchTop().then(({ top }) => setTop(top))
   }, [])
@@ -329,11 +329,14 @@ function IntroPanel({
             </li>
           ))}
         </ol>
-        {top.length > 0 && (
+        {(top === null || top.length > 0) && (
           <div className="mt-6 text-left">
             <p className="text-xs tracking-widest text-ink-muted uppercase">
               {g.board}
             </p>
+            {top === null ? (
+              <BoardSkeleton rows={5} />
+            ) : (
             <ol className="mt-2 flex flex-col gap-1">
               {top.slice(0, 5).map((e, n) => (
                 <li
@@ -352,6 +355,7 @@ function IntroPanel({
                 </li>
               ))}
             </ol>
+            )}
           </div>
         )}
         <div className="mt-7 flex items-center justify-center gap-3">
@@ -390,7 +394,7 @@ function DonePanel({
   const [state, setState] = useState<'idle' | 'saving' | 'saved' | 'local'>(
     'idle',
   )
-  const [top, setTop] = useState<ScoreEntry[]>([])
+  const [top, setTop] = useState<ScoreEntry[] | null>(null)
 
   useEffect(() => {
     fetchTop().then(({ top }) => setTop(top))
@@ -480,11 +484,14 @@ function DonePanel({
           )
         )}
 
-        {top.length > 0 && (
+        {(top === null || top.length > 0) && (
           <div className="mt-6">
             <p className="text-xs tracking-widest text-ink-muted uppercase">
               {g.board}
             </p>
+            {top === null ? (
+              <BoardSkeleton rows={5} />
+            ) : (
             <ol className="mt-2 flex flex-col gap-1">
               {top.slice(0, 10).map((e, n) => (
                 <li
@@ -503,6 +510,7 @@ function DonePanel({
                 </li>
               ))}
             </ol>
+            )}
           </div>
         )}
 
@@ -519,5 +527,23 @@ function DonePanel({
         </div>
       </div>
     </div>
+  )
+}
+
+/** Placeholder rows for the leaderboard: keeps the panel's height stable so
+ *  nothing below it jumps when the scores land. */
+function BoardSkeleton({ rows }: { rows: number }) {
+  return (
+    <ol aria-hidden className="mt-2 flex flex-col gap-1">
+      {Array.from({ length: rows }, (_, n) => (
+        <li key={n} className="flex items-center justify-between gap-3 py-0.5">
+          <span
+            className="skeleton h-3 rounded-full"
+            style={{ width: `${7 - (n % 3) * 1.25}rem` }}
+          />
+          <span className="skeleton h-3 w-10 rounded-full" />
+        </li>
+      ))}
+    </ol>
   )
 }

@@ -17,6 +17,8 @@ import { useLang } from '../i18n'
 import { IconCompass } from './icons'
 import { RingLoader } from './RingField'
 
+const GYRO_HINT_KEY = 'joaqui-gyro-hint'
+
 /** Long enough to read as a dissolve, short enough not to read as loading.
  *  The bytes are typically in hand ~1s in, so everything past this is pure
  *  animation the player is waiting through. */
@@ -65,6 +67,7 @@ export function SphereStage({
   onPickRef.current = onPick
   const [gyroAvail, setGyroAvail] = useState(false)
   const [gyroOn, setGyroOn] = useState(false)
+  const [showGyroHint, setShowGyroHint] = useState(false)
   const webgl = webglAvailable()
 
   const { viewerRef, stage, ready } = usePanoStage({
@@ -109,6 +112,37 @@ export function SphereStage({
 
   const showLoader = useDelayedLoader(stage)
 
+  // One-time coach mark: the compass button is meaningless until you know it
+  // puts you *inside* the shot. Only ever shown on a device that has the
+  // sensors, and only until it has been seen once.
+  useEffect(() => {
+    if (!gyro || !gyroAvail) return
+    try {
+      if (localStorage.getItem(GYRO_HINT_KEY)) return
+    } catch {
+      return // private mode: skip rather than nag on every visit
+    }
+    const show = setTimeout(() => setShowGyroHint(true), 900)
+    return () => clearTimeout(show)
+  }, [gyro, gyroAvail])
+
+  const dismissGyroHint = () => {
+    setShowGyroHint(false)
+    try {
+      localStorage.setItem(GYRO_HINT_KEY, '1')
+    } catch {
+      /* private mode — it'll just show again next time */
+    }
+  }
+
+  // Don't let it linger: it's a nudge, not a dialog.
+  useEffect(() => {
+    if (!showGyroHint) return
+    const t = setTimeout(dismissGyroHint, 7000)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showGyroHint])
+
   // The viewer now outlives the item, so stale markers would hover over the new
   // sphere. Clear them up front; positions are yaw/pitch, so nothing else needs
   // recomputing when the panorama changes.
@@ -122,6 +156,7 @@ export function SphereStage({
   }, [item.id, viewerRef])
 
   const toggleGyro = () => {
+    dismissGyroHint()
     const plugin = viewerRef.current?.getPlugin<GyroscopePlugin>(GyroscopePlugin)
     if (!plugin) return
     // start() asks for motion permission on iOS; if refused, stay off
@@ -185,6 +220,15 @@ export function SphereStage({
         className={`pano-placeholder ${stage === 'full' ? 'is-hidden' : ''}`}
       />
       <div ref={ref} className="relative h-full w-full" />
+      {gyro && gyroAvail && showGyroHint && (
+        <button
+          type="button"
+          onClick={dismissGyroHint}
+          className="gyro-hint glass absolute right-[max(1rem,env(safe-area-inset-right))] bottom-[max(4.75rem,calc(env(safe-area-inset-bottom)+3.5rem))] z-20 max-w-[min(17rem,calc(100vw-2rem))] cursor-pointer rounded-2xl px-3.5 py-2.5 text-left text-xs leading-snug text-ink"
+        >
+          {t.g.gyroHint}
+        </button>
+      )}
       {gyro && gyroAvail && (
         <button
           onClick={toggleGyro}

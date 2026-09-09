@@ -44,17 +44,8 @@ export function playableItems(): MediaItem[] {
 
 /** Counts for the pitch banner — the set Joaqui is *actually* hidden in,
  *  not the whole library. */
-export function playableStats(): {
-  count: number
-  places: number
-  countries: number
-} {
-  const items = playableItems()
-  return {
-    count: items.length,
-    places: new Set(items.map((m) => m.place)).size,
-    countries: new Set(items.map((m) => m.country).filter(Boolean)).size,
-  }
+export function playableStats(): { count: number } {
+  return { count: playableItems().length }
 }
 
 export const ROUNDS = 8

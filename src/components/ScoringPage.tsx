@@ -24,7 +24,21 @@ export function ScoringPage() {
           </h1>
 
           {top === null ? (
-            <p className="mt-6 text-center text-sm text-ink-muted">…</p>
+            // Skeleton rather than a spinner: the list keeps its shape, so
+            // nothing jumps when the real rows arrive.
+            <ol aria-hidden className="mt-6 flex flex-col divide-y divide-white/5">
+              {Array.from({ length: 6 }, (_, n) => (
+                <li key={n} className="flex items-center gap-3 py-2.5">
+                  <span className="skeleton h-3 w-5 rounded-full" />
+                  <span
+                    className="skeleton h-3 flex-1 rounded-full"
+                    style={{ maxWidth: `${9 - (n % 3) * 1.5}rem` }}
+                  />
+                  <span className="skeleton h-3 w-12 rounded-full" />
+                  <span className="skeleton h-3 w-14 rounded-full" />
+                </li>
+              ))}
+            </ol>
           ) : top.length === 0 ? (
             <p className="mt-6 text-center text-sm text-ink-muted">
               {g.scEmpty}

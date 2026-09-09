@@ -287,6 +287,53 @@ body {
 .psv-container.psv-fullscreen-emulation .psv-navbar--open {
   bottom: 0;
 }
+/* One-time nudge pointing at the gyroscope button. Fades up slowly so it
+   registers as an offer rather than an interruption; the little tail points
+   down at the button it describes. */
+.gyro-hint {
+  animation: gyro-hint-in 900ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.gyro-hint::after {
+  content: '';
+  position: absolute;
+  right: 1.1rem;
+  bottom: -0.36rem;
+  width: 0.75rem;
+  height: 0.75rem;
+  rotate: 45deg;
+  background: inherit;
+  border-right: inherit;
+  border-bottom: inherit;
+}
+@keyframes gyro-hint-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Placeholder bars for content that is still loading. The shimmer is kept
+   faint and unhurried on purpose — it should read as "not here yet", not as
+   something demanding attention. */
+.skeleton {
+  display: block;
+  background: color-mix(in oklab, var(--color-ink-muted) 14%, transparent);
+  animation: skeleton-pulse 2.4s ease-in-out infinite;
+}
+@keyframes skeleton-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
 /* our RingLoader replaces PSV's progress spinner */
 .psv-container .psv-loader-container {
   display: none !important;
@@ -566,6 +613,13 @@ html.vt .vt-skip.anim-scale {
   .photo-placeholder,
   .photo-full {
     transition: none;
+  }
+  .skeleton {
+    animation: none;
+    opacity: 0.5;
+  }
+  .gyro-hint {
+    animation: none;
   }
 
   .geo-marker,
