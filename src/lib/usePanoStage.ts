@@ -92,8 +92,8 @@ export function usePanoStage({
 
     // Framing: with a persistent viewer the player's yaw/pitch/zoom from the
     // previous round would otherwise carry into the next one — a fairness bug
-    // in a find-the-thing game. `rotation: false` makes PSV pre-rotate the
-    // incoming mesh to compensate, so nothing visibly moves during the reveal.
+    // in a find-the-thing game. Paired with `rotation: true` below, the camera
+    // GLIDES to this over the dissolve instead of snapping to it at the end.
     const framing = { position: { yaw: 0, pitch: 0 }, zoom: 30 } as const
 
     // ...but passing position/zoom triggers viewer.stopAll(), and the gyroscope
@@ -121,7 +121,7 @@ export function usePanoStage({
             transition:
               first || reduce
                 ? false
-                : { speed: LOW_MS, rotation: false, effect: 'fade' },
+                : { speed: LOW_MS, rotation: true, effect: 'fade' },
             ...framing,
           })
           .catch(() => {})
@@ -138,7 +138,11 @@ export function usePanoStage({
           showLoader: false,
           transition: reduce
             ? false
-            : { speed: fullMs, rotation: false, effect: 'fade' },
+            : { speed: fullMs, rotation: true, effect: 'fade' },
+          // Always pass the framing, even when stage 1 already applied it: the
+          // camera is then already there so the move is zero-length, and an
+          // explicit position stops cleanPanoramaOptions() injecting the
+          // panorama's own GPano heading, which would swing the view again.
           ...framing,
         })
         .catch(() => {})
