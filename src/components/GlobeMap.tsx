@@ -86,6 +86,12 @@ export function GlobeMap({
   const onReadyRef = useRef(onReady)
   onReadyRef.current = onReady
   const announcedRef = useRef(false)
+  // A deep link (?spot / ?view) arrives with a selection already made: the
+  // globe then flies to the place instead of playing the intro drift.
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
+  const introRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const loadedRef = useRef(false)
   const markersRef = useRef<Map<string, HTMLElement>>(new Map())
   const interactedRef = useRef(false)
   const onSelectRef = useRef(onSelect)
@@ -286,6 +292,8 @@ export function GlobeMap({
       // LoaderOrb's timeline), then hand over to the idle spin.
       if (!reducedMotion) {
         intro = setTimeout(() => {
+          // a place was picked meanwhile (deep link): its flyTo owns the camera
+          if (selectedRef.current) return
           map.easeTo({
             zoom: 1.7,
             duration: 2800,
@@ -296,13 +304,18 @@ export function GlobeMap({
             if (!raf) raf = requestAnimationFrame(spin)
           })
         }, INTRO_DELAY_MS)
+        introRef.current = intro
       }
     }
     let intro: ReturnType<typeof setTimeout> | undefined
-    map.on('load', announce)
+    map.on('load', () => {
+      loadedRef.current = true
+      announce()
+    })
     const grace = setTimeout(announce, READY_GRACE_MS)
 
     return () => {
+      loadedRef.current = false
       clearTimeout(grace)
       clearTimeout(intro)
       cancelAnimationFrame(raf)
@@ -338,11 +351,20 @@ export function GlobeMap({
     for (const [id, el] of markersRef.current) {
       el.classList.toggle('is-active', id === selected?.id)
     }
-    if (selected && mapRef.current) {
+    const map = mapRef.current
+    if (!selected || !map) return
+    // Selecting a place is what zooms the globe — never the intro drift. On a
+    // deep link the selection is here before the globe has even painted, so
+    // wait for the loader to reveal it, then fly; the intro is cancelled and
+    // the idle spin never starts.
+    if (!shown) return
+    clearTimeout(introRef.current)
+    interactedRef.current = true
+    const fly = () => {
       // On phones the card covers the lower half, so lift the pin to ~28% from
       // the top (negative-y offset = up) instead of dead-centering it.
       const mobile = window.matchMedia('(max-width: 639px)').matches
-      mapRef.current.flyTo({
+      map.flyTo({
         center: selected.coords,
         zoom: 6,
         duration: 2200,
@@ -350,7 +372,9 @@ export function GlobeMap({
         essential: true,
       })
     }
-  }, [selected])
+    if (loadedRef.current) fly()
+    else map.once('load', fly)
+  }, [selected, shown])
 
   return (
     <div
