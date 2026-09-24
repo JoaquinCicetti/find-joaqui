@@ -1,15 +1,16 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import type maplibregl from 'maplibre-gl'
 import { Header } from './components/Header'
 import { IconArrow } from './components/icons'
 import { GlobeMap } from './components/GlobeMap'
-import { ScoringPage } from './components/ScoringPage'
 import { Starfield } from './components/Starfield'
-import { RingField, RingLoader } from './components/RingField'
-import { displaySrc, type MediaItem, type Spot } from './data/panoramas'
+import { RingField } from './components/RingField'
+import { LoaderOrb } from './components/LoaderOrb'
+import { type MediaItem, type Spot } from './data/panoramas'
 import { loadMedia, useMedia } from './data/mediaStore'
 import { playableItems, playableStats } from './game/joaqui'
-import { onIdle, prefetchImage, warmPano } from './lib/prefetch'
+import { onIdle, warmItem } from './lib/prefetch'
 import { LangProvider, useLang } from './i18n'
 
 // Photo Sphere Viewer pulls in three.js — only load it when a viewer is opened.
@@ -21,6 +22,11 @@ const importGameOverlay = () =>
   import('./components/GameOverlay').then((m) => ({ default: m.GameOverlay }))
 const MediaModal = lazy(importMediaModal)
 const GameOverlay = lazy(importGameOverlay)
+// the leaderboard page carries the bot-avatar renderer — keep it off the
+// main bundle like the other secondary surfaces
+const ScoringPage = lazy(() =>
+  import('./components/ScoringPage').then((m) => ({ default: m.ScoringPage })),
+)
 const CalibrationSuite = lazy(() =>
   import('./components/CalibrationSuite').then((m) => ({
     default: m.CalibrationSuite,
@@ -163,6 +169,11 @@ function Page() {
   const [active, setActive] = useState<MediaItem | null>(null)
   const [viewing, setViewing] = useState<MediaItem | null>(null)
   const [gameOpen, setGameOpen] = useState(false)
+  // The loader orb stays up until the globe has painted and the dots have
+  // dissolved into it; `globe` is set the moment MapLibre reports ready.
+  const [globe, setGlobe] = useState<maplibregl.Map | null>(null)
+  const [shown, setShown] = useState(false)
+  const [landed, setLanded] = useState(false)
   const playable = playableItems().length
   // any surface shown above the globe hides the footer so they don't collide
   const anyCardShown = Boolean(selected || viewing || gameOpen)
@@ -211,14 +222,13 @@ function Page() {
     setSelected(spot)
     setActive(spot ? spot.items[spot.items.length - 1] : null)
     writeUrl(spot ? { spot: spot.id } : {}, Boolean(spot))
-    // While the card is open, warm the viewer chunk and this spot's full-res
-    // shots so tapping through to the viewer opens without a load wait.
+    // While the card is open, warm the viewer chunk and every one of this
+    // spot's full-res shots — the optimized copies are small, and the card's
+    // thumb strip invites tapping any of them — so the viewer lands on a
+    // picture instead of a wait.
     if (spot) {
       importMediaModal()
-      const warm = (it: MediaItem) =>
-        it.kind === '360' ? warmPano(displaySrc(it)) : prefetchImage(displaySrc(it))
-      warm(spot.items[spot.items.length - 1])
-      onIdle(() => spot.items.forEach(warm))
+      spot.items.forEach(warmItem)
     }
   }
 
@@ -264,27 +274,35 @@ function Page() {
     writeUrl(spot ? { spot: spot.id } : {}, false)
   }
 
-  // First paint while the library loads (returning visitors get the cache, so
-  // this only shows on a cold first visit).
-  if (status === 'loading' && media.length === 0) {
-    return (
-      <div className="relative h-full overflow-hidden">
-        <Starfield />
-        <RingField />
-        <div className="absolute inset-0 grid place-items-center">
-          <RingLoader />
-        </div>
-      </div>
-    )
-  }
-
   // Hard failure with nothing cached to fall back on.
-  if (status === 'error' && media.length === 0) {
-    return (
-      <div className="relative h-full overflow-hidden">
-        <Starfield />
-        <RingField />
-        <div className="absolute inset-0 grid place-items-center p-6">
+  const failed = status === 'error' && media.length === 0
+
+  return (
+    <div className="relative h-full overflow-hidden">
+      <Starfield />
+      <RingField />
+      {/* The globe mounts as soon as the library is in hand (cache or fetch)
+          and stays invisible until its first paint; the orb covers the gap. */}
+      {media.length > 0 && (
+        <GlobeMap
+          selected={selected}
+          active={active}
+          onSelect={selectSpot}
+          onChangeActive={setActive}
+          onView={openViewer}
+          onReady={setGlobe}
+          shown={shown}
+        />
+      )}
+      {!landed && !failed && (
+        <LoaderOrb
+          map={globe}
+          onReveal={() => setShown(true)}
+          onDone={() => setLanded(true)}
+        />
+      )}
+      {failed && (
+        <div className="absolute inset-0 z-[8] grid place-items-center p-6">
           <div className="glass anim-scale flex max-w-sm flex-col items-center gap-4 rounded-3xl p-8 text-center">
             <p className="text-sm text-ink-muted">{t.loadError}</p>
             <button onClick={() => loadMedia()} className="btn-primary px-6">
@@ -292,21 +310,7 @@ function Page() {
             </button>
           </div>
         </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative h-full overflow-hidden">
-      <Starfield />
-      <RingField />
-      <GlobeMap
-        selected={selected}
-        active={active}
-        onSelect={selectSpot}
-        onChangeActive={setActive}
-        onView={openViewer}
-      />
+      )}
       {/* cinematic vignette over the globe edges */}
       <div
         aria-hidden
@@ -322,10 +326,12 @@ function Page() {
         className="grain pointer-events-none absolute inset-0 z-[6]"
       />
       <Header />
-      <GameFooter
-        onPlay={playable ? () => setGameOpen(true) : undefined}
-        hidden={anyCardShown}
-      />
+      {landed && (
+        <GameFooter
+          onPlay={playable ? () => setGameOpen(true) : undefined}
+          hidden={anyCardShown}
+        />
+      )}
       {viewing && (
         <Suspense fallback={null}>
           <MediaModal
@@ -357,7 +363,9 @@ export default function App() {
           <CalibrationSuite />
         </Suspense>
       ) : isScoring ? (
-        <ScoringPage />
+        <Suspense fallback={null}>
+          <ScoringPage />
+        </Suspense>
       ) : (
         <Page />
       )}

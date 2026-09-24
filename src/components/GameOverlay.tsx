@@ -23,6 +23,8 @@ import { prefetchImage, warmPano } from '../lib/prefetch'
 import { useLang } from '../i18n'
 import { IconClose, IconSearch } from './icons'
 import { PhotoStage, SphereStage, type StageMarker } from './JoaquiStage'
+import { LeaderRow, LeaderSkeleton } from './LeaderRow'
+import { PlayerAvatar } from './PlayerAvatar'
 
 type Phase = 'intro' | 'guess' | 'reveal' | 'done'
 
@@ -335,26 +337,18 @@ function IntroPanel({
               {g.board}
             </p>
             {top === null ? (
-              <BoardSkeleton rows={5} />
+              <LeaderSkeleton rows={5} className="mt-2" />
             ) : (
-            <ol className="mt-2 flex flex-col gap-1">
-              {top.slice(0, 5).map((e, n) => (
-                <li
-                  key={`${e.name}-${n}`}
-                  className="flex items-baseline justify-between gap-3 text-sm"
-                >
-                  <span className="truncate">
-                    <span className="font-mono text-xs text-ink-muted">
-                      {n + 1}.{' '}
-                    </span>
-                    {e.name}
-                  </span>
-                  <span className="font-mono text-xs text-accent-soft">
-                    {e.score}
-                  </span>
-                </li>
-              ))}
-            </ol>
+              <ol className="mt-2 flex flex-col gap-1.5">
+                {top.slice(0, 5).map((e, n) => (
+                  <LeaderRow
+                    key={`${e.name}-${n}`}
+                    entry={e}
+                    rank={n + 1}
+                    me={localStorage.getItem('joaqui-name')}
+                  />
+                ))}
+              </ol>
             )}
           </div>
         )}
@@ -395,10 +389,18 @@ function DonePanel({
     'idle',
   )
   const [top, setTop] = useState<ScoreEntry[] | null>(null)
+  // the visitor's freshly saved row gets a few seconds of hopping
+  const [celebrate, setCelebrate] = useState(false)
 
   useEffect(() => {
     fetchTop().then(({ top }) => setTop(top))
   }, [])
+
+  useEffect(() => {
+    if (!celebrate) return
+    const t = setTimeout(() => setCelebrate(false), 4000)
+    return () => clearTimeout(t)
+  }, [celebrate])
 
   // personal record, shown next to the play button on the main page
   useEffect(() => {
@@ -414,7 +416,10 @@ function DonePanel({
     const { top, remote } = await submitScore(clean, total, time)
     setTop(top)
     setState(remote ? 'saved' : 'local')
+    setCelebrate(true)
   }
+  const clean = name.trim()
+  const saved = state === 'saved' || state === 'local'
 
   return (
     <div className="absolute inset-0 grid place-items-center overflow-y-auto p-4">
@@ -460,14 +465,26 @@ function DonePanel({
 
         {state === 'idle' || state === 'saving' ? (
           <div className="mt-6 flex items-center gap-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && save()}
-              placeholder={g.namePh}
-              maxLength={24}
-              className="glass-chip w-full rounded-full px-4 py-2.5 text-sm outline-none placeholder:text-ink-muted focus:border-accent-soft"
-            />
+            {/* the bot is the name: it changes as you type, dozes while the
+                field is empty, and shows up next to your score once saved */}
+            <label className="glass-chip flex w-full min-w-0 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 focus-within:border-accent-soft">
+              <PlayerAvatar
+                name={clean}
+                size={32}
+                interactive={false}
+                state={
+                  !clean ? 'sleeping' : state === 'saving' ? 'working' : 'default'
+                }
+              />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && save()}
+                placeholder={g.namePh}
+                maxLength={24}
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-muted"
+              />
+            </label>
             <button
               onClick={save}
               disabled={!name.trim() || state === 'saving'}
@@ -490,26 +507,19 @@ function DonePanel({
               {g.board}
             </p>
             {top === null ? (
-              <BoardSkeleton rows={5} />
+              <LeaderSkeleton rows={5} className="mt-2" />
             ) : (
-            <ol className="mt-2 flex flex-col gap-1">
-              {top.slice(0, 10).map((e, n) => (
-                <li
-                  key={`${e.name}-${n}`}
-                  className="flex items-baseline justify-between gap-3 text-sm"
-                >
-                  <span className="truncate">
-                    <span className="font-mono text-xs text-ink-muted">
-                      {n + 1}.{' '}
-                    </span>
-                    {e.name}
-                  </span>
-                  <span className="font-mono text-xs text-accent-soft">
-                    {e.score}
-                  </span>
-                </li>
-              ))}
-            </ol>
+              <ol className="mt-2 flex flex-col gap-1.5">
+                {top.slice(0, 10).map((e, n) => (
+                  <LeaderRow
+                    key={`${e.name}-${n}`}
+                    entry={e}
+                    rank={n + 1}
+                    me={saved ? clean : null}
+                    celebrate={celebrate && saved && e.name === clean}
+                  />
+                ))}
+              </ol>
             )}
           </div>
         )}
@@ -527,23 +537,5 @@ function DonePanel({
         </div>
       </div>
     </div>
-  )
-}
-
-/** Placeholder rows for the leaderboard: keeps the panel's height stable so
- *  nothing below it jumps when the scores land. */
-function BoardSkeleton({ rows }: { rows: number }) {
-  return (
-    <ol aria-hidden className="mt-2 flex flex-col gap-1">
-      {Array.from({ length: rows }, (_, n) => (
-        <li key={n} className="flex items-center justify-between gap-3 py-0.5">
-          <span
-            className="skeleton h-3 rounded-full"
-            style={{ width: `${7 - (n % 3) * 1.25}rem` }}
-          />
-          <span className="skeleton h-3 w-10 rounded-full" />
-        </li>
-      ))}
-    </ol>
   )
 }

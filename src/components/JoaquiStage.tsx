@@ -15,7 +15,7 @@ import {
 import { isSphereLoc, type JoaquiLocation } from '../game/joaqui'
 import { useLang } from '../i18n'
 import { IconCompass } from './icons'
-import { RingLoader } from './RingField'
+import { StageLoader } from './Orb'
 
 const GYRO_HINT_KEY = 'joaqui-gyro-hint'
 
@@ -210,7 +210,7 @@ export function SphereStage({
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden">
+    <div className="relative h-full w-full overflow-hidden" data-stage={stage}>
       {/* Paints from cache on the first frame, so there is never a blank stage
           under the transparent canvas. */}
       <img
@@ -242,7 +242,7 @@ export function SphereStage({
           <IconCompass className="h-5 w-5" />
         </button>
       )}
-      {showLoader && <RingLoader />}
+      {showLoader && <StageLoader />}
     </div>
   )
 }

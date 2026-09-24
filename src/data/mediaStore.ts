@@ -57,6 +57,8 @@ function commit(payload: ApiPayload, status: Status) {
 }
 
 let started = false
+/** the raw JSON behind the current snapshot, to spot a no-op refetch */
+let committedText: string | null = null
 
 /** Fetch the library from /api/media and publish it. Also used to refresh
  *  after an admin upload — pass `fresh` there to bypass the endpoint's edge
@@ -68,7 +70,10 @@ export async function loadMedia(fresh = false): Promise<void> {
     started = true
     try {
       const cached = localStorage.getItem(CACHE_KEY)
-      if (cached) commit(JSON.parse(cached) as ApiPayload, 'loading')
+      if (cached) {
+        commit(JSON.parse(cached) as ApiPayload, 'loading')
+        committedText = cached
+      }
     } catch {
       /* ignore corrupt cache */
     }
@@ -78,10 +83,20 @@ export async function loadMedia(fresh = false): Promise<void> {
     const url = fresh ? `/api/media?t=${Date.now()}` : '/api/media'
     const res = await fetch(url, { cache: 'no-store' })
     if (!res.ok) throw new Error(String(res.status))
-    const data = (await res.json()) as ApiPayload
+    const text = await res.text()
+    if (text === committedText) {
+      // Same library the cache already painted: only the status changes.
+      // Rebuilding would hand every consumer new `spots`, and the globe
+      // rebuilds itself on that — a second MapLibre boot on every warm visit.
+      snapshot = { ...snapshot, status: 'ready' }
+      emit()
+      return
+    }
+    const data = JSON.parse(text) as ApiPayload
     commit(data, 'ready')
+    committedText = text
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(data))
+      localStorage.setItem(CACHE_KEY, text)
     } catch {
       /* quota — non-fatal */
     }

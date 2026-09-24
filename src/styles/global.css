@@ -339,6 +339,13 @@ body {
   display: none !important;
 }
 
+/* Nothing on the sphere yet: PSV would draw the untextured mesh as a white
+   disc. Keep the canvas out until the first panorama (even the blurred
+   stand-in) is on it. */
+[data-stage='idle'] .psv-canvas-container {
+  opacity: 0 !important;
+}
+
 /* PSV fades its canvas in over 100ms linear, which reads as a blink. Slow it
    right down so the first panorama emerges instead of snapping. */
 .psv-container .psv-canvas-container {
@@ -430,35 +437,26 @@ body {
     opacity: 0;
   }
 }
-/* loader variant: same drifting rings, but in the site's own dusty palette
-   over a frosted veil that matches the glass panels — the image develops in
-   behind it rather than being hidden by a foreign dark box. */
-.ring-loader {
-  background: rgba(14, 17, 24, 0.72);
-  backdrop-filter: blur(12px) saturate(1.1);
-  -webkit-backdrop-filter: blur(12px) saturate(1.1);
+/* In-viewer loader: a small thinking orb over a soft pool of shadow, so the
+   blurred stand-in beneath stays legible while it waits. */
+.stage-loader {
+  background: radial-gradient(
+    circle at center,
+    rgba(14, 17, 24, 0.6) 0,
+    rgba(14, 17, 24, 0.35) 90px,
+    transparent 220px
+  );
+  animation: fade-in 400ms ease both;
 }
-.ring-loader .zoom-ring {
-  --ring-duration: 4.2s;
-  width: 40vmin;
-  max-width: 220px;
-  border-width: 1.5px;
+
+/* The globe layer stays invisible until MapLibre's first complete paint, then
+   fades in under the dissolving loader orb (see LoaderOrb). */
+.globe-layer {
+  opacity: 0;
+  transition: opacity 900ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
-.ring-loader .zoom-ring-0 {
-  --ring-color: var(--color-accent-soft);
-  --ring-alpha: 0.5;
-}
-.ring-loader .zoom-ring-1 {
-  --ring-color: var(--color-accent);
-  --ring-alpha: 0.42;
-}
-.ring-loader .zoom-ring-2 {
-  --ring-color: var(--color-accent-soft);
-  --ring-alpha: 0.36;
-}
-.ring-loader .zoom-ring-3 {
-  --ring-color: #6f8fd0;
-  --ring-alpha: 0.3;
+.globe-layer[data-ready] {
+  opacity: 1;
 }
 
 /* four alternating shapes/colors — cool palette around the brand blue */
@@ -639,17 +637,11 @@ html.vt .vt-skip.anim-scale {
   .ring-stage {
     display: none;
   }
-  /* …except the loader, which must still signal "loading": one calm ring */
-  .ring-loader {
-    display: grid;
-  }
-  .ring-loader .zoom-ring {
+  .stage-loader {
     animation: none;
-    opacity: 0;
   }
-  .ring-loader .zoom-ring-0 {
-    opacity: 0.4;
-    transform: scale(1);
+  .globe-layer {
+    transition: none;
   }
   .ar-reticle::before {
     animation: none;

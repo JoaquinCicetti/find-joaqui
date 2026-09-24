@@ -54,7 +54,12 @@ export const asset = (path: string): string =>
  * could least afford to download it.
  */
 export function displaySrc(item: MediaItem): string {
-  if (!import.meta.env.PROD || !/^https?:\/\//.test(item.src)) {
+  // `VITE_OPTIMIZED_IMAGES=1 pnpm dev` routes through the optimizer in dev too
+  // (vite.config.ts proxies /_vercel to production) so reveals can be judged
+  // at their real download size instead of on multi-MB originals.
+  const optimized =
+    import.meta.env.PROD || import.meta.env.VITE_OPTIMIZED_IMAGES === '1'
+  if (!optimized || !/^https?:\/\//.test(item.src)) {
     return asset(item.src)
   }
   // 360s are zoomed into, so they need more pixels than a flat photo

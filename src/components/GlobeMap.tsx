@@ -58,7 +58,17 @@ interface GlobeMapProps {
   onSelect: (spot: Spot | null) => void
   onChangeActive: (item: MediaItem) => void
   onView: (item: MediaItem) => void
+  /** fired once, after MapLibre's first visually complete paint */
+  onReady?: (map: maplibregl.Map) => void
+  /** show the layer (it stays invisible until the loader hands over) */
+  shown?: boolean
 }
+
+/** ms after the first paint before the intro zoom starts: the loader's dots
+ *  are turning into the continents until then (LoaderOrb's T_SINK0) */
+const INTRO_DELAY_MS = 1500
+/** ms after boot to show the globe regardless of whether tiles arrived */
+const READY_GRACE_MS = 6000
 
 export function GlobeMap({
   selected,
@@ -66,11 +76,16 @@ export function GlobeMap({
   onSelect,
   onChangeActive,
   onView,
+  onReady,
+  shown = true,
 }: GlobeMapProps) {
   const { t, lang } = useLang()
   const { spots } = useMedia()
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<maplibregl.Map | null>(null)
+  const onReadyRef = useRef(onReady)
+  onReadyRef.current = onReady
+  const announcedRef = useRef(false)
   const markersRef = useRef<Map<string, HTMLElement>>(new Map())
   const interactedRef = useRef(false)
   const onSelectRef = useRef(onSelect)
@@ -254,22 +269,42 @@ export function GlobeMap({
       raf = requestAnimationFrame(spin)
     }
 
-    // intro: drift in from space, then hand over to the idle spin
-    if (!reducedMotion) {
-      map.on('load', () => {
-        map.easeTo({
-          zoom: 1.7,
-          duration: 2800,
-          easing: (x) => 1 - Math.pow(1 - x, 3),
-          essential: true,
-        })
-        map.once('moveend', () => {
-          if (!raf) raf = requestAnimationFrame(spin)
-        })
-      })
+    // The first complete paint hands the page over from the loader orb. If
+    // the tiles never come (blocked, offline) the layer shows anyway after a
+    // grace period rather than staying invisible for good.
+    let announced = false
+    const announce = () => {
+      if (announced) return
+      announced = true
+      // once per page: an admin refetch rebuilds the map but not the intro
+      if (!announcedRef.current) {
+        announcedRef.current = true
+        onReadyRef.current?.(map)
+      }
+      // intro: drift in from space once the loader's dots have become the
+      // continents and the real globe is fading in under them (see
+      // LoaderOrb's timeline), then hand over to the idle spin.
+      if (!reducedMotion) {
+        intro = setTimeout(() => {
+          map.easeTo({
+            zoom: 1.7,
+            duration: 2800,
+            easing: (x) => 1 - Math.pow(1 - x, 3),
+            essential: true,
+          })
+          map.once('moveend', () => {
+            if (!raf) raf = requestAnimationFrame(spin)
+          })
+        }, INTRO_DELAY_MS)
+      }
     }
+    let intro: ReturnType<typeof setTimeout> | undefined
+    map.on('load', announce)
+    const grace = setTimeout(announce, READY_GRACE_MS)
 
     return () => {
+      clearTimeout(grace)
+      clearTimeout(intro)
       cancelAnimationFrame(raf)
       cancelAnimationFrame(nearRaf)
       container.removeEventListener('mousemove', onMouseMove)
@@ -318,7 +353,10 @@ export function GlobeMap({
   }, [selected])
 
   return (
-    <div className="absolute inset-0">
+    <div
+      className="globe-layer absolute inset-0"
+      data-ready={shown ? '' : undefined}
+    >
       <div ref={containerRef} className="h-full w-full" />
       <svg
         aria-hidden

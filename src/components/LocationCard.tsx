@@ -1,6 +1,7 @@
 import { asset, type MediaItem, type Spot } from '../data/panoramas'
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconClose } from './icons'
+import { warmItem } from '../lib/prefetch'
 
 interface LocationCardProps {
   spot: Spot
@@ -198,9 +199,14 @@ function ThumbButton({
   badge?: string
   onClick: () => void
 }) {
+  // a finger or pointer on the thumb is intent: start its full-res now
+  const warm = () => warmItem(item)
   return (
     <button
       onClick={onClick}
+      onPointerEnter={warm}
+      onTouchStart={warm}
+      onFocus={warm}
       aria-label={`${item.place} · ${formatDate(item.date, lang)}`}
       aria-pressed={selected}
       className={`relative shrink-0 cursor-pointer overflow-hidden rounded-lg transition-opacity ${

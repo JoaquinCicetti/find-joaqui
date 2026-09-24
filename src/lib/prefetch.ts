@@ -1,3 +1,5 @@
+import { displaySrc, type MediaItem } from '../data/panoramas'
+
 const warmed = new Set<string>()
 // Retain in-flight <img> objects so the browser doesn't garbage-collect (and
 // cancel) the download before it finishes — the bug that made prefetch flaky.
@@ -93,4 +95,15 @@ export function onIdle(fn: () => void): void {
   ).requestIdleCallback
   if (ric) ric(fn, { timeout: 2000 })
   else setTimeout(fn, 300)
+}
+
+/**
+ * Warm one shot's full-res the way its viewer will load it: panoramas go
+ * through PSV's cache, flat photos through the <img> cache. Safe to call
+ * eagerly and repeatedly — both paths de-dupe.
+ */
+export function warmItem(item: MediaItem): void {
+  const src = displaySrc(item)
+  if (item.kind === '360') warmPano(src)
+  else prefetchImage(src)
 }

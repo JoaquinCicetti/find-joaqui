@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { fetchTop, formatSeconds, type ScoreEntry } from '../game/api'
+import { fetchTop, type ScoreEntry } from '../game/api'
 import { Starfield } from './Starfield'
+import { LeaderRow, LeaderSkeleton } from './LeaderRow'
 import { useLang } from '../i18n'
 
 /** Standalone /scoring page: the full leaderboard — name, time, points. */
@@ -26,19 +27,11 @@ export function ScoringPage() {
           {top === null ? (
             // Skeleton rather than a spinner: the list keeps its shape, so
             // nothing jumps when the real rows arrive.
-            <ol aria-hidden className="mt-6 flex flex-col divide-y divide-white/5">
-              {Array.from({ length: 6 }, (_, n) => (
-                <li key={n} className="flex items-center gap-3 py-2.5">
-                  <span className="skeleton h-3 w-5 rounded-full" />
-                  <span
-                    className="skeleton h-3 flex-1 rounded-full"
-                    style={{ maxWidth: `${9 - (n % 3) * 1.5}rem` }}
-                  />
-                  <span className="skeleton h-3 w-12 rounded-full" />
-                  <span className="skeleton h-3 w-14 rounded-full" />
-                </li>
-              ))}
-            </ol>
+            <LeaderSkeleton
+              rows={6}
+              withTime
+              className="mt-6 divide-y divide-white/5 [&>li]:py-2"
+            />
           ) : top.length === 0 ? (
             <p className="mt-6 text-center text-sm text-ink-muted">
               {g.scEmpty}
@@ -50,32 +43,20 @@ export function ScoringPage() {
                 className="flex items-baseline gap-3 pb-2 text-[10px] tracking-widest text-ink-muted uppercase"
               >
                 <span className="w-5" />
+                <span className="w-7" />
                 <span className="min-w-0 flex-1">{g.scName}</span>
                 <span className="w-12 text-right">{g.scTime}</span>
                 <span className="w-14 text-right">{g.scPts}</span>
               </li>
               {top.map((e, n) => (
-                <li
+                <LeaderRow
                   key={`${e.name}-${n}`}
-                  className="flex items-baseline gap-3 py-2 text-sm"
-                >
-                  <span className="w-5 font-mono text-xs text-ink-muted">
-                    {n + 1}.
-                  </span>
-                  <span
-                    className={`min-w-0 flex-1 truncate ${
-                      e.name === me ? 'text-accent-soft' : ''
-                    }`}
-                  >
-                    {e.name}
-                  </span>
-                  <span className="w-12 text-right font-mono text-xs text-ink-muted">
-                    {e.time != null ? formatSeconds(e.time) : '—'}
-                  </span>
-                  <span className="w-14 text-right font-mono text-sm text-accent-soft">
-                    {e.score}
-                  </span>
-                </li>
+                  entry={e}
+                  rank={n + 1}
+                  me={me}
+                  withTime
+                  className="py-2"
+                />
               ))}
             </ol>
           )}

@@ -16,7 +16,7 @@ import {
 const MODAL_DISSOLVE_MS = 700
 import { countryName, formatDate, useLang } from '../i18n'
 import { IconChevron, IconClose, IconExpand } from './icons'
-import { RingLoader } from './RingField'
+import { StageLoader } from './Orb'
 
 interface MediaModalProps {
   item: MediaItem
@@ -70,7 +70,10 @@ function SphereViewer({ item }: { item: MediaItem }) {
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-2xl">
+    <div
+      className="relative h-full w-full overflow-hidden rounded-2xl"
+      data-stage={stage}
+    >
       <img
         src={lowSrc(item)}
         alt=""
@@ -78,7 +81,7 @@ function SphereViewer({ item }: { item: MediaItem }) {
         className={`pano-placeholder ${stage === 'full' ? 'is-hidden' : ''}`}
       />
       <div ref={ref} className="relative h-full w-full" />
-      {showLoader && <RingLoader />}
+      {showLoader && <StageLoader />}
     </div>
   )
 }
